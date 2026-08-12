@@ -18,7 +18,9 @@ type CreateWorkspaceOptions struct {
 	SeedDir  string
 }
 
-// Executor interface for running workspace operations
+// Executor interface for running workspace operations. Implementations must
+// preserve context-attached package-manager environment variables by using the
+// pkgmgr package helpers whenever they shell out.
 type Executor interface {
 	CreateWorkspace(ctx context.Context, ws *models.Workspace, logWriter io.Writer, opts CreateWorkspaceOptions) error
 	InstallPackages(ctx context.Context, ws *models.Workspace, packages []string, logWriter io.Writer) error

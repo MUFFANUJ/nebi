@@ -50,8 +50,8 @@ make swagger         # regenerate API docs from serve.go annotations into intern
 
 ### Local mode vs. team mode
 This is the single most important architectural distinction. `config.IsLocalMode()` (`NEBI_MODE`, default `team`) switches behavior throughout:
-- **local** (desktop / single user): authentication is bypassed, casbin RBAC checks are skipped, all workspaces are visible, no encryption key needed.
-- **team** (multi-user server): real auth (basic / JWT / OIDC-via-Keycloak), casbin RBAC enforcement, owner + permission/group-based workspace filtering, encrypted credentials.
+- **local** (desktop / single user): authentication is bypassed, casbin RBAC checks are skipped, all workspaces are visible. Field-encrypted credentials still derive a key from `auth.jwt_secret`; with the default local secret, this is obfuscation rather than a strong at-rest guarantee.
+- **team** (multi-user server): real auth (basic / JWT / OIDC-via-Keycloak), casbin RBAC enforcement, owner + permission/group-based workspace filtering, encrypted credentials backed by a real `auth.jwt_secret`.
 
 When changing auth, visibility, or permissions, check both branches — see `internal/api/router.go` and the `isLocal` flags threaded through `internal/service`.
 
@@ -63,7 +63,7 @@ When changing auth, visibility, or permissions, check both branches — see `int
 - `cliclient/` — HTTP client the CLI commands use to talk to a remote server (mirrors the handler endpoints).
 - `auth/`, `rbac/` — authenticators (local/basic/OIDC) and casbin enforcer/provider.
 - `queue/` (memory or valkey) + `worker/` + `executor/` (local or docker) — async job pipeline. Long operations (env builds, installs) are enqueued, run by the worker through an executor, with output streamed via `logstream/`.
-- `pkgmgr/` — package-manager abstraction (`PackageManager` interface in `pkgmgr.go`, `pixi/` impl, selected by `factory.go`). This is where Pixi/uv commands are shelled out.
+- `pkgmgr/` — package-manager abstraction (`PackageManager` interface in `pkgmgr.go`, `pixi/` impl, selected by `factory.go`). This is where Pixi/uv commands are shelled out. Any package-manager or executor code that shells out must set `cmd.Env = pkgmgr.CommandEnvironment(ctx)` so user build variables apply.
 - `oci/` — push/pull of environments to OCI registries.
 - `swagger/` — generated; do not hand-edit (run `make swagger`).
 

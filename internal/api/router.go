@@ -186,7 +186,10 @@ func NewRouter(cfg *config.Config, db *gorm.DB, q queue.Queue, exec executor.Exe
 	}
 
 	// Initialize services and handlers
-	svc := service.New(db, q, exec, localMode, encKey, rbacProvider)
+	svc := service.New(db, q, exec, localMode, encKey, rbacProvider, service.BuildEnvPolicy{
+		AllowedNames:    cfg.BuildEnv.AllowedNames,
+		AllowedPrefixes: cfg.BuildEnv.AllowedPrefixes,
+	})
 	adminSvc := service.NewAdminService(db, rbacProvider)
 	groupSvc := service.NewGroupService(db, rbacProvider)
 	registrySvc := service.NewRegistryService(db, encKey)

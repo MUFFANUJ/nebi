@@ -27,10 +27,16 @@ import (
 // via UpdateWorkspaceSize regardless of how the worker's error handling around
 // SyncPackagesFromWorkspace / CreateVersionSnapshot is refactored later.
 const testPackageManager = "test-noop"
+const leakingListPackageManager = "test-leaking-list"
+
+var leakingListErr error
 
 func init() {
 	pkgmgr.Register(testPackageManager, func(string) (pkgmgr.PackageManager, error) {
 		return noopPackageManager{}, nil
+	})
+	pkgmgr.Register(leakingListPackageManager, func(string) (pkgmgr.PackageManager, error) {
+		return leakingListPackageManagerImpl{}, nil
 	})
 }
 
@@ -46,6 +52,15 @@ func (noopPackageManager) List(context.Context, pkgmgr.ListOptions) ([]pkgmgr.Pa
 func (noopPackageManager) Update(context.Context, pkgmgr.UpdateOptions) error { return nil }
 func (noopPackageManager) GetManifest(context.Context, string) (*pkgmgr.Manifest, error) {
 	return &pkgmgr.Manifest{}, nil
+}
+
+type leakingListPackageManagerImpl struct {
+	noopPackageManager
+}
+
+func (leakingListPackageManagerImpl) Name() string { return leakingListPackageManager }
+func (leakingListPackageManagerImpl) List(context.Context, pkgmgr.ListOptions) ([]pkgmgr.Package, error) {
+	return nil, leakingListErr
 }
 
 // fakeExecutor is a minimal Executor stub for worker tests. CreateWorkspace
@@ -393,6 +408,41 @@ func TestExecuteJob_RedactsBuildEnvironmentSecretsFromLogsAndErrors(t *testing.T
 	}
 	if !strings.Contains(err.Error(), buildEnvironmentSecretRedaction) {
 		t.Fatalf("error did not include redaction marker: %v", err)
+	}
+}
+
+func TestExecuteJob_RedactsBuildEnvironmentSecretsFromServerLogs(t *testing.T) {
+	db, svc, jobSvc, exec := setupWorkerTest(t)
+
+	ws, job := newTestWorkspace(t, db, exec, "build-env-server-log-redaction", models.JobTypeUpdate, nil)
+	if err := db.Model(ws).Update("package_manager", leakingListPackageManager).Error; err != nil {
+		t.Fatalf("set package manager: %v", err)
+	}
+	ws.PackageManager = leakingListPackageManager
+
+	secretValue := "secret-token-123"
+	if _, err := svc.UpsertBuildEnvVar(ws.OwnerID, service.BuildEnvVarReq{
+		Key:   "GITLAB_TOKEN",
+		Value: secretValue,
+	}); err != nil {
+		t.Fatalf("upsert build env var: %v", err)
+	}
+
+	leakingListErr = errors.New("pixi list failed while using " + secretValue)
+	t.Cleanup(func() { leakingListErr = nil })
+
+	var serverLogs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&serverLogs, nil))
+	w := New(queue.NewMemoryQueue(10), exec, svc, jobSvc, logger, nil)
+	if err := w.executeJob(context.Background(), job, &bytes.Buffer{}); err != nil {
+		t.Fatalf("executeJob: %v", err)
+	}
+
+	if strings.Contains(serverLogs.String(), secretValue) {
+		t.Fatalf("server logs leaked build environment secret: %q", serverLogs.String())
+	}
+	if !strings.Contains(serverLogs.String(), buildEnvironmentSecretRedaction) {
+		t.Fatalf("server logs did not include redaction marker: %q", serverLogs.String())
 	}
 }
 

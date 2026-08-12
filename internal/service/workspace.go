@@ -19,17 +19,33 @@ import (
 
 // WorkspaceService contains the business logic for workspace operations.
 type WorkspaceService struct {
-	db       *gorm.DB
-	queue    queue.Queue
-	executor executor.Executor
-	rbac     rbac.Provider
-	isLocal  bool
-	encKey   []byte
+	db                      *gorm.DB
+	queue                   queue.Queue
+	executor                executor.Executor
+	rbac                    rbac.Provider
+	isLocal                 bool
+	encKey                  []byte
+	buildEnvAllowedNames    map[string]struct{}
+	buildEnvAllowedPrefixes []string
 }
 
 // New creates a new WorkspaceService.
-func New(db *gorm.DB, q queue.Queue, exec executor.Executor, isLocal bool, encKey []byte, rbacProvider rbac.Provider) *WorkspaceService {
-	return &WorkspaceService{db: db, queue: q, executor: exec, isLocal: isLocal, encKey: encKey, rbac: rbacProvider}
+func New(db *gorm.DB, q queue.Queue, exec executor.Executor, isLocal bool, encKey []byte, rbacProvider rbac.Provider, buildEnvPolicies ...BuildEnvPolicy) *WorkspaceService {
+	policy := defaultBuildEnvPolicy
+	if len(buildEnvPolicies) > 0 {
+		policy = buildEnvPolicies[0]
+	}
+	allowedNames, allowedPrefixes := normalizeBuildEnvPolicy(policy)
+	return &WorkspaceService{
+		db:                      db,
+		queue:                   q,
+		executor:                exec,
+		isLocal:                 isLocal,
+		encKey:                  encKey,
+		rbac:                    rbacProvider,
+		buildEnvAllowedNames:    allowedNames,
+		buildEnvAllowedPrefixes: allowedPrefixes,
+	}
 }
 
 // IsLocal reports whether the service is running in local/desktop mode.

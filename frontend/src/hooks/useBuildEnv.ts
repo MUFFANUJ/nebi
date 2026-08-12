@@ -3,6 +3,7 @@ import { type BuildEnvTarget, buildEnvApi } from '@/api/buildEnv';
 import type { BuildEnvVar, UpsertBuildEnvVarRequest } from '@/types';
 
 const buildEnvVarsQueryKey = (target: BuildEnvTarget) =>
+  // Keep remote keys under the remote prefix so disconnect invalidation clears them.
   target === 'remote'
     ? (['remote', 'build-env-vars'] as const)
     : (['build-env-vars', 'local'] as const);

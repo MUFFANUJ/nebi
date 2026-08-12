@@ -47,6 +47,27 @@ nebi serve --host 127.0.0.1 --port 8460
 
 Once the server is running, authenticate from any client machine with [`nebi login`](./cli-team.md#connect-to-a-server).
 
+## Build Environment Variables
+
+Users can store encrypted build variables for package-manager operations, such as private Git or Python package indexes. To keep team servers from accepting unsafe process-level environment overrides, the server only accepts names allowed by admin configuration.
+
+By default, Nebi accepts the exact names `GITLAB_TOKEN`, `GITHUB_TOKEN`, and `GH_TOKEN`, plus names starting with `NEBI_`. Add only the exact names or prefixes your package manager needs:
+
+```yaml
+build_env:
+  allowed_names:
+    - GITLAB_TOKEN
+    - UV_INDEX_USERNAME
+    - UV_INDEX_PASSWORD
+  allowed_prefixes:
+    - NEBI_
+    - PIP_
+```
+
+The same settings can be supplied with `NEBI_BUILD_ENV_ALLOWED_NAMES` and `NEBI_BUILD_ENV_ALLOWED_PREFIXES` as comma-separated lists. Nebi always rejects reserved names and prefixes such as `PATH`, `HOME`, `LD_`, `DYLD_`, `XDG_`, and `PIXI_`, even if they appear in the allow-list.
+
+Before relying on a new private package index in production, run a smoke test against the real index by saving the needed variable in Nebi and triggering a workspace build that resolves from that index.
+
 ## API Documentation
 
 The Swagger API docs are available at [http://localhost:8460/docs](http://localhost:8460/docs).

@@ -244,6 +244,192 @@ func TestBuildEnvVars_EncryptedCRUD(t *testing.T) {
 	}
 }
 
+func TestBuildEnvVars_RejectReservedKeys(t *testing.T) {
+	svc, db := testSetup(t, true)
+	userID := createTestUser(t, db, "alice")
+
+	for _, key := range []string{"PATH", "path", "LD_PRELOAD", "DYLD_INSERT_LIBRARIES", "XDG_CACHE_HOME", "PIXI_CACHE_DIR"} {
+		t.Run(key, func(t *testing.T) {
+			_, err := svc.UpsertBuildEnvVar(userID, BuildEnvVarReq{
+				Key:   key,
+				Value: "secret-token",
+			})
+			if err == nil {
+				t.Fatal("expected reserved key error")
+			}
+			var ve *ValidationError
+			if !isValidationError(err, &ve) {
+				t.Fatalf("expected ValidationError, got %T: %v", err, err)
+			}
+		})
+	}
+}
+
+func TestBuildEnvVars_UsesDefaultAllowList(t *testing.T) {
+	svc, db := testSetup(t, true)
+	userID := createTestUser(t, db, "alice")
+
+	if _, err := svc.UpsertBuildEnvVar(userID, BuildEnvVarReq{
+		Key:   "NEBI_PRIVATE_TOKEN",
+		Value: "secret-token",
+	}); err != nil {
+		t.Fatalf("expected NEBI_ custom prefix to be accepted: %v", err)
+	}
+
+	_, err := svc.UpsertBuildEnvVar(userID, BuildEnvVarReq{
+		Key:   "ARBITRARY_TOKEN",
+		Value: "secret-token",
+	})
+	if err == nil {
+		t.Fatal("expected unlisted key to be rejected")
+	}
+	var ve *ValidationError
+	if !isValidationError(err, &ve) {
+		t.Fatalf("expected ValidationError, got %T: %v", err, err)
+	}
+	if !strings.Contains(ve.Message, "GITLAB_TOKEN") || !strings.Contains(ve.Message, "NEBI_") {
+		t.Fatalf("expected allow-list details in error, got %q", ve.Message)
+	}
+}
+
+func TestBuildEnvVars_UsesConfiguredAllowListForPrivateIndexes(t *testing.T) {
+	baseSvc, db := testSetup(t, true)
+	svc := New(db, baseSvc.queue, baseSvc.executor, true, make([]byte, 32), rbac.NewDefaultProvider(), BuildEnvPolicy{
+		AllowedNames:    []string{"UV_INDEX_PASSWORD"},
+		AllowedPrefixes: []string{"PIP_"},
+	})
+	userID := createTestUser(t, db, "alice")
+
+	for _, req := range []BuildEnvVarReq{
+		{Key: "UV_INDEX_PASSWORD", Value: "secret-token"},
+		{Key: "PIP_INDEX_URL", Value: "https://token@example.com/simple"},
+	} {
+		if _, err := svc.UpsertBuildEnvVar(userID, req); err != nil {
+			t.Fatalf("expected configured key %q to be accepted: %v", req.Key, err)
+		}
+	}
+
+	_, err := svc.UpsertBuildEnvVar(userID, BuildEnvVarReq{
+		Key:   "CONDA_TOKEN",
+		Value: "secret-token",
+	})
+	if err == nil {
+		t.Fatal("expected unconfigured private-index key to be rejected")
+	}
+	var ve *ValidationError
+	if !isValidationError(err, &ve) {
+		t.Fatalf("expected ValidationError, got %T: %v", err, err)
+	}
+}
+
+func TestBuildEnvVars_RejectUnsafeValues(t *testing.T) {
+	svc, db := testSetup(t, true)
+	userID := createTestUser(t, db, "alice")
+
+	tests := []struct {
+		name  string
+		key   string
+		value string
+		want  string
+	}{
+		{name: "blank", key: "NEBI_BLANK_TOKEN", value: "        ", want: "value is required"},
+		{name: "short", key: "NEBI_SHORT_TOKEN", value: "short", want: "at least 8"},
+		{name: "control", key: "NEBI_CONTROL_TOKEN", value: "secret\nvalue", want: "control characters"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := svc.UpsertBuildEnvVar(userID, BuildEnvVarReq{
+				Key:   tt.key,
+				Value: tt.value,
+			})
+			if err == nil {
+				t.Fatal("expected unsafe value error")
+			}
+			var ve *ValidationError
+			if !isValidationError(err, &ve) {
+				t.Fatalf("expected ValidationError, got %T: %v", err, err)
+			}
+			if !strings.Contains(ve.Message, tt.want) {
+				t.Fatalf("expected error containing %q, got %q", tt.want, ve.Message)
+			}
+		})
+	}
+}
+
+func TestBuildEnvVars_DeleteAllowsPreviouslyStoredReservedKey(t *testing.T) {
+	svc, db := testSetup(t, true)
+	userID := createTestUser(t, db, "alice")
+
+	if err := db.Create(&models.BuildEnvVar{
+		UserID: userID,
+		Key:    "PATH",
+		Value:  "enc:v1:unused",
+	}).Error; err != nil {
+		t.Fatalf("create reserved build env var: %v", err)
+	}
+
+	if _, _, err := svc.BuildEnvironmentSecretsForUser(userID); err == nil {
+		t.Fatal("expected reserved stored key to block build environment use")
+	}
+
+	if err := svc.DeleteBuildEnvVar(userID, "PATH"); err != nil {
+		t.Fatalf("DeleteBuildEnvVar: %v", err)
+	}
+
+	var count int64
+	if err := db.Model(&models.BuildEnvVar{}).Where("user_id = ? AND key = ?", userID, "PATH").Count(&count).Error; err != nil {
+		t.Fatalf("count build env vars: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected reserved key to be deleted, got %d rows", count)
+	}
+}
+
+func TestBuildEnvVars_WritesKeyOnlyAuditEntries(t *testing.T) {
+	svc, db := testSetup(t, true)
+	userID := createTestUser(t, db, "alice")
+
+	if _, err := svc.UpsertBuildEnvVar(userID, BuildEnvVarReq{
+		Key:   "GITLAB_TOKEN",
+		Value: "secret-token-one",
+	}); err != nil {
+		t.Fatalf("create build env var: %v", err)
+	}
+	if _, err := svc.UpsertBuildEnvVar(userID, BuildEnvVarReq{
+		Key:   "GITLAB_TOKEN",
+		Value: "secret-token-two",
+	}); err != nil {
+		t.Fatalf("rotate build env var: %v", err)
+	}
+	if err := svc.DeleteBuildEnvVar(userID, "GITLAB_TOKEN"); err != nil {
+		t.Fatalf("delete build env var: %v", err)
+	}
+
+	var logs []models.AuditLog
+	if err := db.Where("user_id = ? AND resource LIKE ?", userID, "build_env_var:%").
+		Order("id ASC").
+		Find(&logs).Error; err != nil {
+		t.Fatalf("query audit logs: %v", err)
+	}
+	if len(logs) != 3 {
+		t.Fatalf("expected 3 audit logs, got %d", len(logs))
+	}
+
+	wantActions := []string{"create_build_env_var", "rotate_build_env_var", "delete_build_env_var"}
+	for i, log := range logs {
+		if log.Action != wantActions[i] {
+			t.Fatalf("audit log %d action: got %q want %q", i, log.Action, wantActions[i])
+		}
+		if !strings.Contains(log.DetailsJSON, "GITLAB_TOKEN") {
+			t.Fatalf("audit log %d missing key detail: %s", i, log.DetailsJSON)
+		}
+		if strings.Contains(log.DetailsJSON, "secret-token-one") || strings.Contains(log.DetailsJSON, "secret-token-two") {
+			t.Fatalf("audit log %d leaked secret value: %s", i, log.DetailsJSON)
+		}
+	}
+}
+
 func TestBuildEnvVars_RejectInvalidKey(t *testing.T) {
 	svc, db := testSetup(t, true)
 	userID := createTestUser(t, db, "alice")

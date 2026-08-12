@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/nebari-dev/nebi/internal/api"
@@ -69,6 +70,7 @@ type App struct {
 	server *http.Server
 	router http.Handler  // Gin router for API requests
 	ready  chan struct{} // closed when router is initialized
+	once   sync.Once
 }
 
 // NewApp creates a new App instance
@@ -93,6 +95,20 @@ func (h *appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.app.router.ServeHTTP(w, r)
 }
 
+func (a *App) failEmbeddedServerStartup(logMessage string) {
+	logToFile(logMessage)
+	a.router = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Nebi API failed to start; see /tmp/nebi-startup.log", http.StatusServiceUnavailable)
+	})
+	a.signalReady()
+}
+
+func (a *App) signalReady() {
+	a.once.Do(func() {
+		close(a.ready)
+	})
+}
+
 // logToFile writes a message to the debug log file
 func logToFile(msg string) {
 	f, err := os.OpenFile("/tmp/nebi-startup.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -111,7 +127,7 @@ func (a *App) startup(ctx context.Context) {
 	// Set database path to user's Application Support directory for desktop app
 	dataDir, err := getAppDataDir()
 	if err != nil {
-		logToFile(fmt.Sprintf("Error getting app data dir: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startup: app data dir error: %v", err))
 		return
 	}
 	dbPath := fmt.Sprintf("%s/nebi.db", dataDir)
@@ -129,7 +145,7 @@ func (a *App) startup(ctx context.Context) {
 	// Load config
 	cfg, err := config.Load()
 	if err != nil {
-		logToFile(fmt.Sprintf("Error loading config: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startup: config load error: %v", err))
 		return
 	}
 	a.config = cfg
@@ -138,7 +154,7 @@ func (a *App) startup(ctx context.Context) {
 	// Connect to database
 	database, err := db.New(cfg.Database)
 	if err != nil {
-		logToFile(fmt.Sprintf("Error connecting to database: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startup: database connection error: %v", err))
 		return
 	}
 	a.db = database
@@ -146,18 +162,18 @@ func (a *App) startup(ctx context.Context) {
 
 	// Run migrations
 	if err := db.Migrate(database, cfg.Registries.SeedDefault); err != nil {
-		logToFile(fmt.Sprintf("Error running migrations: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startup: migration error: %v", err))
 		return
 	}
 	// Desktop app is always local mode — migrate store tables
 	if err := store.MigrateServerDB(database); err != nil {
-		logToFile(fmt.Sprintf("Error migrating store tables: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startup: store migration error: %v", err))
 		return
 	}
 
 	// Reconcile admin-provisioned registries from config.yaml into the DB.
 	if err := service.ReconcileConfigRegistries(database, cfg.Registries.Entries); err != nil {
-		logToFile(fmt.Sprintf("Error reconciling config registries: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startup: config registry reconciliation error: %v", err))
 		return
 	}
 	logToFile("Migrations complete")
@@ -179,20 +195,23 @@ func (a *App) startEmbeddedServer(cfg *config.Config, database *gorm.DB) {
 	// Initialize executor
 	exec, err := executor.NewLocalExecutor(cfg)
 	if err != nil {
-		logToFile(fmt.Sprintf("startEmbeddedServer: executor error: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startEmbeddedServer: executor error: %v", err))
 		return
 	}
 	logToFile("startEmbeddedServer: executor initialized")
 
 	encKey, err := nebicrypto.DeriveKey(cfg.Auth.JWTSecret)
 	if err != nil {
-		logToFile(fmt.Sprintf("startEmbeddedServer: encryption key error: %v", err))
+		a.failEmbeddedServerStartup(fmt.Sprintf("startEmbeddedServer: encryption key error: %v", err))
 		return
 	}
 
 	// Create service and worker. Local mode bypasses auth/RBAC, but encrypted
 	// build variables still need the same field-encryption key as the API.
-	svc := service.New(database, jobQueue, exec, true, encKey, rbac.NewDefaultProvider())
+	svc := service.New(database, jobQueue, exec, true, encKey, rbac.NewDefaultProvider(), service.BuildEnvPolicy{
+		AllowedNames:    cfg.BuildEnv.AllowedNames,
+		AllowedPrefixes: cfg.BuildEnv.AllowedPrefixes,
+	})
 	jobSvc := service.NewJobService(database, true)
 	w := worker.New(jobQueue, exec, svc, jobSvc, slog.Default(), nil)
 	workerCtx, workerCancel := context.WithCancel(context.Background())
@@ -214,7 +233,7 @@ func (a *App) startEmbeddedServer(cfg *config.Config, database *gorm.DB) {
 	logToFile("startEmbeddedServer: initializing router...")
 	router := api.NewRouter(cfg, database, jobQueue, exec, w.GetBroker(), nil, slog.Default())
 	a.router = router
-	close(a.ready) // signal that router is ready for Wails handler
+	a.signalReady() // signal that router is ready for Wails handler
 	logToFile("startEmbeddedServer: router initialized")
 
 	// Create HTTP server on port 8460 (fallback for CLI access).

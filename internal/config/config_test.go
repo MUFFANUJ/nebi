@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -231,5 +232,45 @@ func TestAllowedOriginsList_Empty(t *testing.T) {
 	c := ServerConfig{AllowedOrigins: "  "}
 	if got := c.AllowedOriginsList(); got != nil {
 		t.Errorf("expected nil for blank value, got %v", got)
+	}
+}
+
+func TestLoad_DefaultBuildEnvPolicy(t *testing.T) {
+	isolate(t)
+	t.Setenv("NEBI_MODE", "local")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	wantNames := []string{"GITLAB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"}
+	if !reflect.DeepEqual(cfg.BuildEnv.AllowedNames, wantNames) {
+		t.Fatalf("allowed names: got %v want %v", cfg.BuildEnv.AllowedNames, wantNames)
+	}
+	wantPrefixes := []string{"NEBI_"}
+	if !reflect.DeepEqual(cfg.BuildEnv.AllowedPrefixes, wantPrefixes) {
+		t.Fatalf("allowed prefixes: got %v want %v", cfg.BuildEnv.AllowedPrefixes, wantPrefixes)
+	}
+}
+
+func TestLoad_BuildEnvPolicyFromEnv(t *testing.T) {
+	isolate(t)
+	t.Setenv("NEBI_MODE", "local")
+	t.Setenv("NEBI_BUILD_ENV_ALLOWED_NAMES", "GITLAB_TOKEN, CUSTOM_TOKEN")
+	t.Setenv("NEBI_BUILD_ENV_ALLOWED_PREFIXES", "NEBI_, ACME_")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	wantNames := []string{"GITLAB_TOKEN", "CUSTOM_TOKEN"}
+	if !reflect.DeepEqual(cfg.BuildEnv.AllowedNames, wantNames) {
+		t.Fatalf("allowed names: got %v want %v", cfg.BuildEnv.AllowedNames, wantNames)
+	}
+	wantPrefixes := []string{"NEBI_", "ACME_"}
+	if !reflect.DeepEqual(cfg.BuildEnv.AllowedPrefixes, wantPrefixes) {
+		t.Fatalf("allowed prefixes: got %v want %v", cfg.BuildEnv.AllowedPrefixes, wantPrefixes)
 	}
 }

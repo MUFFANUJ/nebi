@@ -18,6 +18,7 @@ type Config struct {
 	PackageManager PackageManagerConfig `mapstructure:"package_manager"`
 	Storage        StorageConfig        `mapstructure:"storage"`
 	Registries     RegistriesConfig     `mapstructure:"registries"`
+	BuildEnv       BuildEnvConfig       `mapstructure:"build_env"`
 }
 
 // IsLocalMode returns true when the server is running in local/desktop mode.
@@ -114,6 +115,12 @@ type RegistryEntryConfig struct {
 	Default   bool   `mapstructure:"default"`   // at most one entry may set this
 }
 
+// BuildEnvConfig holds server-admin policy for user build variables.
+type BuildEnvConfig struct {
+	AllowedNames    []string `mapstructure:"allowed_names"`    // Exact variable names users may define.
+	AllowedPrefixes []string `mapstructure:"allowed_prefixes"` // Variable-name prefixes users may define.
+}
+
 // Load reads configuration from file and environment variables
 func Load() (*Config, error) {
 	v := viper.New()
@@ -147,6 +154,8 @@ func Load() (*Config, error) {
 	v.SetDefault("package_manager.default_type", "pixi")
 	v.SetDefault("storage.workspaces_dir", "./data/workspaces")
 	v.SetDefault("registries.seed_default", true)
+	v.SetDefault("build_env.allowed_names", []string{"GITLAB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"})
+	v.SetDefault("build_env.allowed_prefixes", []string{"NEBI_"})
 
 	// Read from config file if exists
 	v.SetConfigName("config")
@@ -191,11 +200,15 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("queue.valkey_addr", "NEBI_QUEUE_VALKEY_ADDR")
 	_ = v.BindEnv("log.format", "NEBI_LOG_FORMAT")
 	_ = v.BindEnv("log.level", "NEBI_LOG_LEVEL")
+	_ = v.BindEnv("build_env.allowed_names", "NEBI_BUILD_ENV_ALLOWED_NAMES")
+	_ = v.BindEnv("build_env.allowed_prefixes", "NEBI_BUILD_ENV_ALLOWED_PREFIXES")
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
+	cfg.BuildEnv.AllowedNames = splitConfigStringSlice(v.GetStringSlice("build_env.allowed_names"))
+	cfg.BuildEnv.AllowedPrefixes = splitConfigStringSlice(v.GetStringSlice("build_env.allowed_prefixes"))
 
 	// Normalize base path: ensure leading slash, strip trailing slash
 	if cfg.Server.BasePath != "" {
@@ -271,4 +284,17 @@ func normalizeRegistries(rc *RegistriesConfig) error {
 		return fmt.Errorf("registries.entries: at most one entry may set default: true")
 	}
 	return nil
+}
+
+func splitConfigStringSlice(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				result = append(result, part)
+			}
+		}
+	}
+	return result
 }

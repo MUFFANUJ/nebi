@@ -241,18 +241,9 @@ type buildEnvironmentLogRedactor struct {
 }
 
 func newBuildEnvironmentLogRedactor(writer io.Writer, secretValues []string) *buildEnvironmentLogRedactor {
-	secrets := make([]string, 0, len(secretValues))
-	for _, value := range secretValues {
-		if value != "" {
-			secrets = append(secrets, value)
-		}
-	}
-	sort.Slice(secrets, func(i, j int) bool {
-		return len(secrets[i]) > len(secrets[j])
-	})
 	return &buildEnvironmentLogRedactor{
 		writer:  writer,
-		secrets: secrets,
+		secrets: normalizeBuildEnvironmentSecrets(secretValues),
 	}
 }
 
@@ -303,6 +294,13 @@ func redactBuildEnvironmentError(err error, secretValues []string) error {
 }
 
 func redactBuildEnvironmentSecrets(text string, secretValues []string) string {
+	for _, value := range normalizeBuildEnvironmentSecrets(secretValues) {
+		text = strings.ReplaceAll(text, value, buildEnvironmentSecretRedaction)
+	}
+	return text
+}
+
+func normalizeBuildEnvironmentSecrets(secretValues []string) []string {
 	secrets := make([]string, 0, len(secretValues))
 	for _, value := range secretValues {
 		if value != "" {
@@ -315,10 +313,7 @@ func redactBuildEnvironmentSecrets(text string, secretValues []string) string {
 		}
 		return len(secrets[i]) > len(secrets[j])
 	})
-	for _, value := range secrets {
-		text = strings.ReplaceAll(text, value, buildEnvironmentSecretRedaction)
-	}
-	return text
+	return secrets
 }
 
 func (w *Worker) executeJob(ctx context.Context, job *models.Job, logWriter io.Writer) (err error) {
@@ -398,14 +393,14 @@ func (w *Worker) executeJob(ctx context.Context, job *models.Job, logWriter io.W
 
 		// List installed packages and save to database
 		if err := w.svc.SyncPackagesFromWorkspace(ctx, ws); err != nil {
-			w.logger.Error("Failed to sync packages", "error", err)
+			w.logger.Error("Failed to sync packages", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 		w.svc.SetWorkspaceStatus(ws.ID, models.WsStatusReady)
 
 		// Create version snapshot
 		if err := w.svc.CreateVersionSnapshot(ctx, ws, job.ID, userID, "Initial workspace creation"); err != nil {
-			w.logger.Error("Failed to create version snapshot", "error", err)
+			w.logger.Error("Failed to create version snapshot", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 	case models.JobTypeInstall:
@@ -427,7 +422,7 @@ func (w *Worker) executeJob(ctx context.Context, job *models.Job, logWriter io.W
 		w.svc.SaveInstalledPackages(ws.ID, packages)
 
 		if err := w.svc.CreateVersionSnapshot(ctx, ws, job.ID, userID, fmt.Sprintf("Installed packages: %v", packages)); err != nil {
-			w.logger.Error("Failed to create version snapshot", "error", err)
+			w.logger.Error("Failed to create version snapshot", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 		if err := w.maybeReinstallEnv(ctx, ws, wasInstalled, logWriter, buildEnvSecretValues); err != nil {
@@ -453,7 +448,7 @@ func (w *Worker) executeJob(ctx context.Context, job *models.Job, logWriter io.W
 		w.svc.DeletePackagesByName(ws.ID, packages)
 
 		if err := w.svc.CreateVersionSnapshot(ctx, ws, job.ID, userID, fmt.Sprintf("Removed packages: %v", packages)); err != nil {
-			w.logger.Error("Failed to create version snapshot", "error", err)
+			w.logger.Error("Failed to create version snapshot", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 		if err := w.maybeReinstallEnv(ctx, ws, wasInstalled, logWriter, buildEnvSecretValues); err != nil {
@@ -477,13 +472,13 @@ func (w *Worker) executeJob(ctx context.Context, job *models.Job, logWriter io.W
 		}
 
 		if err := w.svc.SyncPackagesFromWorkspace(ctx, ws); err != nil {
-			w.logger.Error("Failed to sync packages after solve", "error", err)
+			w.logger.Error("Failed to sync packages after solve", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 		w.svc.SetWorkspaceStatus(ws.ID, models.WsStatusReady)
 
 		if err := w.svc.CreateVersionSnapshot(ctx, ws, job.ID, userID, "Solved environment from updated pixi.toml"); err != nil {
-			w.logger.Error("Failed to create version snapshot", "error", err)
+			w.logger.Error("Failed to create version snapshot", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 		if err := w.maybeReinstallEnv(ctx, ws, wasInstalled, logWriter, buildEnvSecretValues); err != nil {
@@ -550,11 +545,11 @@ func (w *Worker) executeJob(ctx context.Context, job *models.Job, logWriter io.W
 		}
 
 		if err := w.svc.SyncPackagesFromWorkspace(ctx, ws); err != nil {
-			w.logger.Error("Failed to sync packages after rollback", "error", err)
+			w.logger.Error("Failed to sync packages after rollback", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 		if err := w.svc.CreateVersionSnapshot(ctx, ws, job.ID, userID, fmt.Sprintf("Rolled back to version %d", version.VersionNumber)); err != nil {
-			w.logger.Error("Failed to create version snapshot after rollback", "error", err)
+			w.logger.Error("Failed to create version snapshot after rollback", "error", redactBuildEnvironmentError(err, buildEnvSecretValues))
 		}
 
 		if err := w.maybeReinstallEnv(ctx, ws, wasInstalled, logWriter, buildEnvSecretValues); err != nil {

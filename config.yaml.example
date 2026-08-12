@@ -54,6 +54,24 @@ package_manager:
   # pixi_path: /custom/path/to/pixi  # Optional: custom binary path
   # uv_path: /custom/path/to/uv      # Optional: custom binary path
 
+build_env:
+  # Users may define these exact build variable names. Add only the private
+  # index or registry credentials your package manager needs.
+  allowed_names:
+    - GITLAB_TOKEN
+    - GITHUB_TOKEN
+    - GH_TOKEN
+    # Examples for private Python indexes:
+    # - UV_INDEX_PASSWORD
+    # - UV_INDEX_USERNAME
+    # - PIP_INDEX_URL
+  # Users may also define variables with these prefixes.
+  allowed_prefixes:
+    - NEBI_
+    # Example, if your deployment standardizes private index variables:
+    # - UV_
+    # - PIP_
+
 storage:
   environments_dir: ./data/environments
 

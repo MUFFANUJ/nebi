@@ -5,7 +5,10 @@ import (
 	"io"
 )
 
-// PackageManager is the interface that all package managers must implement
+// PackageManager is the interface that all package managers must implement.
+// Implementations that execute external commands must pass
+// CommandEnvironment(ctx) to exec.Cmd.Env so build environment variables
+// attached with WithEnvironment reach the package-manager process.
 type PackageManager interface {
 	// Name returns the package manager name (e.g., "pixi", "uv")
 	Name() string
