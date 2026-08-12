@@ -35,7 +35,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     -o /nebi ./cmd/nebi
 
 # Stage 3: Final image with pixi
-FROM ghcr.io/prefix-dev/pixi:0.40.3-noble@sha256:2ce403ab03b9882e6aeda6c1f6dce6ce83a82db213202f2708eee9059c973893
+FROM ghcr.io/prefix-dev/pixi:0.76.2-noble@sha256:8b206ef57005a902cb53f50dbaa47893a4038ca269f0b00038b51f18b1313cd4
 WORKDIR /app
 
 # Install CA certificates (required for OIDC/HTTPS connections)
