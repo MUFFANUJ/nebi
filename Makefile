@@ -10,6 +10,7 @@ LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.Commit=$(COMMIT)"
 BUILDFLAGS=-trimpath
 SWAG_VERSION ?= v1.16.6
 AIR_VERSION ?= v1.67.3
+GOLANGCI_LINT_VERSION ?= v2.12.2
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -22,8 +23,8 @@ install-tools: ## Install development tools (swag, air, golangci-lint)
 	@go install github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
 	@echo "Installing air..."
 	@go install github.com/air-verse/air@$(AIR_VERSION)
-	@echo "Installing golangci-lint v1.64.8..."
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.64.8
+	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	@echo "Tools installed successfully"
 
 swagger: ## Generate Swagger documentation
@@ -109,7 +110,7 @@ vet: ## Run go vet
 
 lint: fmt ## Run formatters and linters (matches CI)
 	@echo "Running golangci-lint..."
-	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found, installing..."; curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.64.8; }
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found, installing..."; go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); }
 	@PATH="$$PATH:$$(go env GOPATH)/bin" golangci-lint run ./...
 	@echo "Lint complete"
 
