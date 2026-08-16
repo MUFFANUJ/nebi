@@ -17,10 +17,10 @@ env:
   SYFT_VERSION: v1.40.0
   GOVULNCHECK_VERSION: v1.1.4
 
-# Shares a ref-keyed concurrency group with the Desktop App workflow so the two
-# don't race to create the same GitHub release for a v* tag. See desktop.yml.
+# Keep Release runs for a ref mutually exclusive. Docker/Desktop use their own
+# concurrency groups and wait for this workflow before uploading release assets.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

@@ -46,7 +46,10 @@ if [ "$is_draft" != "true" ]; then
   exit 0
 fi
 
-mapfile -t assets < <(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets[].name')
+assets=()
+while IFS= read -r name; do
+  assets+=("$name")
+done < <(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets[].name')
 
 missing=()
 for expected in "${required_assets[@]}"; do

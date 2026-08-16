@@ -15,7 +15,7 @@ permissions:
   attestations: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -292,6 +292,13 @@ jobs:
         with:
           subject-path: nebi-container-image.json
           create-storage-record: false
+
+      - name: Wait for CLI release draft
+        if: startsWith(github.ref, 'refs/tags/') && steps.registry.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/wait-for-release-workflow.sh Release
 
       - name: Upload container image release metadata
         if: startsWith(github.ref, 'refs/tags/') && steps.registry.outputs.publish == 'true'

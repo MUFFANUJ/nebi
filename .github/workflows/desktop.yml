@@ -19,13 +19,12 @@ env:
   SYFT_VERSION: v1.40.0
   GOVULNCHECK_VERSION: v1.1.4
 
-# Serialize against the Release (GoReleaser) workflow, which fires on the same
-# v* tags and writes to the same GitHub release. Sharing one ref-keyed group
-# across both workflows means whichever starts first creates the release and
-# the other only appends its assets — eliminating the concurrent-create race.
-# cancel-in-progress: false so a queued run waits rather than being dropped.
+# Keep same-workflow runs for a ref mutually exclusive. Tag workflows must not
+# share one group: GitHub only keeps one pending run per concurrency group, so
+# the Docker/Desktop/Release trio can otherwise cancel one another. Release
+# writes are ordered below by waiting for the GoReleaser workflow before upload.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -406,6 +405,13 @@ jobs:
           subject-path: ${{ steps.release_asset.outputs.path }}
           sbom-path: ${{ steps.release_asset.outputs.sbom_path }}
           create-storage-record: false
+
+      - name: Wait for CLI release draft
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/wait-for-release-workflow.sh Release
 
       - name: Upload to release
         if: startsWith(github.ref, 'refs/tags/')
