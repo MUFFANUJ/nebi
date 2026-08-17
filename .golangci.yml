@@ -8,6 +8,12 @@ linters:
     - ineffassign
     - staticcheck
   settings:
+    # v1 enabled gosimple, which v2 folds into staticcheck. Restrict to the
+    # S* (simplification) checks so the migration doesn't widen lint scope;
+    # enabling SA/ST/QF is a separate cleanup.
+    staticcheck:
+      checks:
+        - S*
     errcheck:
       check-type-assertions: false
       check-blank: false
@@ -29,9 +35,6 @@ linters:
         - unreachable
         - unusedresult
       enable-all: false
-    staticcheck:
-      checks:
-        - S*
   exclusions:
     generated: lax
     presets:
