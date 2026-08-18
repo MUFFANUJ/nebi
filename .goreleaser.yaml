@@ -124,7 +124,10 @@ release:
   use_existing_draft: true
   replace_existing_artifacts: true
   prerelease: auto
-  mode: replace
+  # GoReleaser's release mode controls release notes, not artifacts. Keep the
+  # existing draft body on reruns; duplicate artifact handling is limited to
+  # same-name uploads by replace_existing_artifacts above.
+  mode: keep-existing
   header: |
     ## nebi {{ .Tag }} ({{ .Date }})
 

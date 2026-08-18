@@ -18,7 +18,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Install build tools for API docs generation
-RUN apk add --no-cache make && go install github.com/swaggo/swag/cmd/swag@v1.16.6
+COPY .github/tool-versions.env .github/tool-versions.env
+RUN apk add --no-cache make && \
+    . .github/tool-versions.env && \
+    go install github.com/swaggo/swag/cmd/swag@${SWAG_VERSION}
 
 # Copy source code
 COPY . .

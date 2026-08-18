@@ -1,35 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-required_assets=(
-  checksums.txt
-  checksums.txt.sigstore.json
-  nebi-cli-provenance.sigstore.json
-  nebi-cli-release.json
-  nebi-cli-release.json.sigstore.json
+: "${GITHUB_REF_NAME:?GITHUB_REF_NAME is required}"
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+: "${GITHUB_SHA:?GITHUB_SHA is required}"
+
+version_num="${GITHUB_REF_NAME#v}"
+cosign_issuer="https://token.actions.githubusercontent.com"
+
+cli_archives=(
+  "nebi_${version_num}_linux_x86_64.tar.gz"
+  "nebi_${version_num}_linux_arm64.tar.gz"
+  "nebi_${version_num}_macOS_x86_64.tar.gz"
+  "nebi_${version_num}_macOS_arm64.tar.gz"
+  "nebi_${version_num}_windows_x86_64.zip"
+)
+
+desktop_assets=(
   nebi-desktop-linux-amd64.tar.gz
-  nebi-desktop-linux-amd64.tar.gz.sha256
-  nebi-desktop-linux-amd64.tar.gz.sigstore.json
-  nebi-desktop-linux-amd64.tar.gz.sbom.spdx.json
-  nebi-desktop-linux-amd64.tar.gz.sbom.spdx.json.sigstore.json
-  nebi-desktop-linux-amd64.tar.gz.release.json
-  nebi-desktop-linux-amd64.tar.gz.release.json.sigstore.json
   nebi-desktop-macos-universal.zip
-  nebi-desktop-macos-universal.zip.sha256
-  nebi-desktop-macos-universal.zip.sigstore.json
-  nebi-desktop-macos-universal.zip.sbom.spdx.json
-  nebi-desktop-macos-universal.zip.sbom.spdx.json.sigstore.json
-  nebi-desktop-macos-universal.zip.release.json
-  nebi-desktop-macos-universal.zip.release.json.sigstore.json
   nebi-desktop-windows-amd64.exe
-  nebi-desktop-windows-amd64.exe.sha256
-  nebi-desktop-windows-amd64.exe.sigstore.json
-  nebi-desktop-windows-amd64.exe.sbom.spdx.json
-  nebi-desktop-windows-amd64.exe.sbom.spdx.json.sigstore.json
-  nebi-desktop-windows-amd64.exe.release.json
-  nebi-desktop-windows-amd64.exe.release.json.sigstore.json
-  nebi-container-image.json
-  nebi-container-image.json.sigstore.json
 )
 
 marker_assets=(
@@ -40,45 +30,99 @@ marker_assets=(
   nebi-container-image.json
 )
 
+release_assets=(
+  checksums.txt
+  checksums.txt.sigstore.json
+  nebi-cli-provenance.sigstore.json
+)
+
+for archive in "${cli_archives[@]}"; do
+  release_assets+=("$archive" "${archive}.sigstore.json")
+done
+
+for asset in "${desktop_assets[@]}"; do
+  release_assets+=(
+    "$asset"
+    "${asset}.sigstore.json"
+    "${asset}.sbom.spdx.json"
+    "${asset}.sbom.spdx.json.sigstore.json"
+  )
+done
+
+workflow_file_for_marker() {
+  case "$1" in
+    nebi-cli-release.json)
+      printf '%s\n' "release.yml"
+      ;;
+    nebi-desktop-*.release.json)
+      printf '%s\n' "desktop.yml"
+      ;;
+    nebi-container-image.json)
+      printf '%s\n' "docker.yml"
+      ;;
+    *)
+      echo "No workflow identity mapping for release marker $1."
+      exit 1
+      ;;
+  esac
+}
+
+verify_blob_signature() {
+  artifact_path="$1"
+  bundle_path="$2"
+  workflow_file="$3"
+  identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/${workflow_file}@refs/tags/${GITHUB_REF_NAME}"
+
+  cosign verify-blob \
+    --bundle "$bundle_path" \
+    --certificate-identity "$identity" \
+    --certificate-oidc-issuer "$cosign_issuer" \
+    "$artifact_path" >/dev/null
+}
+
+download_release_asset() {
+  asset="$1"
+  gh release download "${GITHUB_REF_NAME}" \
+    --pattern "$asset" \
+    --dir "$tmpdir" \
+    --clobber >/dev/null
+}
+
 is_draft="$(gh release view "${GITHUB_REF_NAME}" --json isDraft --jq '.isDraft')"
 if [ "$is_draft" != "true" ]; then
   echo "Release ${GITHUB_REF_NAME} is already public."
   exit 0
 fi
 
-assets=()
-while IFS= read -r name; do
-  assets+=("$name")
-done < <(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets[].name')
+asset_names="$(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets[].name')"
 
-missing=()
-for expected in "${required_assets[@]}"; do
-  found=false
-  for actual in "${assets[@]}"; do
-    if [ "$actual" = "$expected" ]; then
-      found=true
-      break
+missing_markers=()
+for marker in "${marker_assets[@]}"; do
+  for expected in "$marker" "${marker}.sigstore.json"; do
+    if ! printf '%s\n' "$asset_names" | grep -Fxq "$expected"; then
+      missing_markers+=("$expected")
     fi
   done
-  if [ "$found" = "false" ]; then
-    missing+=("$expected")
-  fi
 done
 
-if [ "${#missing[@]}" -gt 0 ]; then
-  echo "Release ${GITHUB_REF_NAME} remains draft; missing gated assets:"
-  printf '  %s\n' "${missing[@]}"
+if [ "${#missing_markers[@]}" -gt 0 ]; then
+  echo "Release ${GITHUB_REF_NAME} remains draft; waiting for release markers:"
+  printf '  %s\n' "${missing_markers[@]}"
   exit 0
 fi
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
+if ! command -v cosign >/dev/null 2>&1; then
+  echo "cosign is required to verify release marker signatures."
+  exit 1
+fi
+
 for marker in "${marker_assets[@]}"; do
-  gh release download "${GITHUB_REF_NAME}" \
-    --pattern "$marker" \
-    --dir "$tmpdir" \
-    --clobber >/dev/null
+  download_release_asset "$marker"
+  download_release_asset "${marker}.sigstore.json"
+  verify_blob_signature "$tmpdir/$marker" "$tmpdir/${marker}.sigstore.json" "$(workflow_file_for_marker "$marker")"
 done
 
 runs_json="$tmpdir/workflow-runs.json"
@@ -98,30 +142,18 @@ for marker in "${marker_assets[@]}"; do
   marker_paths+=("$tmpdir/$marker")
 done
 
-"$python_bin" - "$GITHUB_SHA" "$runs_json" "${marker_paths[@]}" <<'PY'
+"$python_bin" - "$GITHUB_SHA" "$GITHUB_REF_NAME" "$runs_json" ".github/scripts/select-release-workflow-run.py" "${marker_paths[@]}" <<'PY'
+import importlib.util
 import json
 import sys
 
-expected_commit, runs_path, *marker_paths = sys.argv[1:]
+expected_commit, expected_ref_name, runs_path, selector_path, *marker_paths = sys.argv[1:]
 with open(runs_path, encoding="utf-8") as f:
-    runs = json.load(f)["workflow_runs"]
+    runs = json.load(f).get("workflow_runs", [])
 
-latest_by_workflow = {}
-for run in runs:
-    if run.get("event") != "push" or run.get("head_sha") != expected_commit:
-        continue
-    workflow = run.get("name")
-    previous = latest_by_workflow.get(workflow)
-    if previous is None or (
-        run.get("created_at", ""),
-        int(run.get("run_attempt") or 0),
-        int(run.get("id") or 0),
-    ) > (
-        previous.get("created_at", ""),
-        int(previous.get("run_attempt") or 0),
-        int(previous.get("id") or 0),
-    ):
-        latest_by_workflow[workflow] = run
+spec = importlib.util.spec_from_file_location("release_selector", selector_path)
+selector = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(selector)
 
 for path in marker_paths:
     with open(path, encoding="utf-8") as f:
@@ -138,7 +170,7 @@ for path in marker_paths:
         )
 
     workflow = data["workflow"]
-    latest_run = latest_by_workflow.get(workflow)
+    latest_run = selector.latest_run(runs, workflow, expected_commit, expected_ref_name)
     if latest_run is None:
         raise SystemExit(f"{path} references workflow {workflow}, but no matching run was found")
 
@@ -149,14 +181,116 @@ for path in marker_paths:
             f"{path} was produced by run_id {marker_run_id}, "
             f"but latest {workflow} run for {expected_commit} is {latest_run_id}"
         )
+PY
 
-    latest_attempt = latest_run.get("run_attempt")
-    marker_attempt = data.get("run_attempt")
-    if latest_attempt is not None and marker_attempt is not None and str(marker_attempt) != str(latest_attempt):
-        raise SystemExit(
-            f"{path} was produced by run_attempt {marker_attempt}, "
-            f"but latest {workflow} attempt for {expected_commit} is {latest_attempt}"
+missing_release_assets=()
+for expected in "${release_assets[@]}"; do
+  if ! printf '%s\n' "$asset_names" | grep -Fxq "$expected"; then
+    missing_release_assets+=("$expected")
+  fi
+done
+
+if [ "${#missing_release_assets[@]}" -gt 0 ]; then
+  echo "::error::Release ${GITHUB_REF_NAME} has current markers but is missing required assets."
+  printf '  %s\n' "${missing_release_assets[@]}"
+  exit 1
+fi
+
+hash_assets=(checksums.txt checksums.txt.sigstore.json nebi-cli-provenance.sigstore.json)
+for archive in "${cli_archives[@]}"; do
+  hash_assets+=("$archive")
+done
+for asset in "${desktop_assets[@]}"; do
+  hash_assets+=("$asset" "${asset}.sbom.spdx.json")
+done
+
+for asset in "${hash_assets[@]}"; do
+  download_release_asset "$asset"
+done
+
+verify_blob_signature "$tmpdir/checksums.txt" "$tmpdir/checksums.txt.sigstore.json" "release.yml"
+
+"$python_bin" - "$GITHUB_REF_NAME" "$tmpdir" "${marker_paths[@]}" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+ref_name, tmpdir_arg, *marker_paths = sys.argv[1:]
+tmpdir = Path(tmpdir_arg)
+version_num = ref_name.removeprefix("v")
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def require_digest(path, expected, label):
+    if not expected:
+        raise SystemExit(f"{label} is missing an expected sha256 value")
+    actual = sha256_file(path)
+    if actual != expected:
+        raise SystemExit(f"{label} sha256 mismatch: {actual}, expected {expected}")
+
+
+checksums_path = tmpdir / "checksums.txt"
+checksums = {}
+with open(checksums_path, encoding="utf-8") as f:
+    for line in f:
+        fields = line.split()
+        if len(fields) < 2:
+            continue
+        checksums[fields[1].lstrip("*")] = fields[0]
+
+cli_archives = [
+    f"nebi_{version_num}_linux_x86_64.tar.gz",
+    f"nebi_{version_num}_linux_arm64.tar.gz",
+    f"nebi_{version_num}_macOS_x86_64.tar.gz",
+    f"nebi_{version_num}_macOS_arm64.tar.gz",
+    f"nebi_{version_num}_windows_x86_64.zip",
+]
+for archive in cli_archives:
+    if archive not in checksums:
+        raise SystemExit(f"checksums.txt is missing {archive}")
+    require_digest(tmpdir / archive, checksums[archive], archive)
+
+for marker_path in marker_paths:
+    with open(marker_path, encoding="utf-8") as f:
+        marker = json.load(f)
+
+    component = marker.get("component")
+    if component == "cli":
+        require_digest(
+            checksums_path,
+            marker.get("checksums_sha256"),
+            "checksums.txt marker payload",
         )
+        provenance_bundle = marker.get("provenance_bundle")
+        if provenance_bundle and not (tmpdir / provenance_bundle).exists():
+            raise SystemExit(f"CLI marker references missing provenance bundle {provenance_bundle}")
+    elif component == "desktop":
+        asset = marker.get("asset")
+        if not asset:
+            raise SystemExit(f"{marker_path} is missing desktop asset")
+        require_digest(tmpdir / asset, marker.get("artifact_sha256"), asset)
+        sbom = f"{asset}.sbom.spdx.json"
+        require_digest(tmpdir / sbom, marker.get("sbom_sha256"), sbom)
+    elif component == "container":
+        image = marker.get("image")
+        digest = marker.get("digest")
+        reference = marker.get("reference")
+        if not image or not digest or not reference:
+            raise SystemExit(f"{marker_path} is missing container image, digest, or reference")
+        if not digest.startswith("sha256:"):
+            raise SystemExit(f"{marker_path} has invalid container digest {digest}")
+        if reference != f"{image}@{digest}":
+            raise SystemExit(f"{marker_path} reference {reference} does not match image@digest")
+    else:
+        raise SystemExit(f"{marker_path} has unknown component {component}")
 PY
 
 release_id="$(gh release view "${GITHUB_REF_NAME}" --json databaseId --jq '.databaseId')"

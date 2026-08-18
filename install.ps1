@@ -54,12 +54,13 @@ function Confirm-CosignBlob {
     }
 
     $identity = "https://github.com/$Repo/.github/workflows/$Workflow@refs/tags/$Version"
-    & cosign verify-blob `
+    $output = & cosign verify-blob `
         --bundle $BundlePath `
         --certificate-identity $identity `
         --certificate-oidc-issuer $CosignIssuer `
-        $ArtifactPath *> $null
+        $ArtifactPath 2>&1
     if ($LASTEXITCODE -ne 0) {
+        $output | ForEach-Object { Write-Host $_ -ForegroundColor Red }
         Write-Err "Signature verification failed for $(Split-Path -Leaf $ArtifactPath)."
     }
 }
@@ -98,20 +99,6 @@ function Confirm-ChecksumFromFile {
     }
 }
 
-function Confirm-ChecksumSidecar {
-    param(
-        [string]$ArtifactPath,
-        [string]$ChecksumPath
-    )
-
-    $line = Get-Content $ChecksumPath | Select-Object -First 1
-    $expected = ($line -split '\s+')[0].ToLowerInvariant()
-    $actual = Get-Sha256 $ArtifactPath
-    if (-not $expected -or $actual -ne $expected) {
-        Write-Err "Checksum verification failed for $(Split-Path -Leaf $ArtifactPath)."
-    }
-}
-
 function Confirm-AssetSignature {
     param(
         [string]$ArtifactPath,
@@ -123,20 +110,6 @@ function Confirm-AssetSignature {
     Write-Info "Downloading signature for $(Split-Path -Leaf $ArtifactPath)..."
     Invoke-Download -Uri "$ArtifactUrl.sigstore.json" -OutFile $bundlePath
     Confirm-CosignBlob -ArtifactPath $ArtifactPath -BundlePath $bundlePath -Workflow $Workflow
-}
-
-function Confirm-SignedAsset {
-    param(
-        [string]$ArtifactPath,
-        [string]$ArtifactUrl,
-        [string]$Workflow
-    )
-
-    $checksumPath = "$ArtifactPath.sha256"
-    Write-Info "Downloading checksum for $(Split-Path -Leaf $ArtifactPath)..."
-    Invoke-Download -Uri "$ArtifactUrl.sha256" -OutFile $checksumPath
-    Confirm-ChecksumSidecar -ArtifactPath $ArtifactPath -ChecksumPath $checksumPath
-    Confirm-AssetSignature -ArtifactPath $ArtifactPath -ArtifactUrl $ArtifactUrl -Workflow $Workflow
 }
 
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "nebi-install-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
@@ -237,7 +210,7 @@ try {
         Write-Info "Downloading $DesktopExe..."
         Invoke-Download -Uri $DesktopUrl -OutFile $DesktopDownloadPath
         Write-Info "Verifying $DesktopExe..."
-        Confirm-SignedAsset -ArtifactPath $DesktopDownloadPath -ArtifactUrl $DesktopUrl -Workflow $DesktopWorkflow
+        Confirm-AssetSignature -ArtifactPath $DesktopDownloadPath -ArtifactUrl $DesktopUrl -Workflow $DesktopWorkflow
         Copy-Item -Path $DesktopDownloadPath -Destination $DesktopPath -Force
 
         Write-Info "Desktop app installed to $DesktopPath"

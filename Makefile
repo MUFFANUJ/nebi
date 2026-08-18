@@ -1,6 +1,8 @@
 .PHONY: help build build-frontend build-backend run swagger migrate test clean install-tools dev build-docker-pixi build-docker-uv build-docker test-pkgmgr build-all build-desktop
 
 # Variables
+include .github/tool-versions.env
+
 BINARY_NAME=nebi
 FRONTEND_DIR=frontend
 BUILD_DIR=bin
@@ -8,9 +10,6 @@ VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.Commit=$(COMMIT)"
 BUILDFLAGS=-trimpath
-SWAG_VERSION ?= v1.16.6
-AIR_VERSION ?= v1.67.3
-GOLANGCI_LINT_VERSION ?= v2.12.2
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'

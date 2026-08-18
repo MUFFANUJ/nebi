@@ -11,12 +11,6 @@ permissions:
   id-token: write
   attestations: write
 
-env:
-  SWAG_VERSION: v1.16.6
-  COSIGN_VERSION: v2.6.1
-  SYFT_VERSION: v1.40.0
-  GOVULNCHECK_VERSION: v1.1.4
-
 # Keep Release runs for a ref mutually exclusive. Docker/Desktop use their own
 # concurrency groups and wait for this workflow before uploading release assets.
 concurrency:
@@ -34,6 +28,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - name: Load pinned tool versions
+        run: bash .github/scripts/load-tool-versions.sh
+
       - name: Check Go toolchain is current (strict)
         run: ./scripts/check-go-toolchain.sh --strict
 
@@ -44,7 +41,7 @@ jobs:
 
       - name: govulncheck (source)
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+          go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
           govulncheck ./cmd/... ./internal/...
 
   goreleaser:
@@ -66,6 +63,10 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+
+      - name: Load pinned tool versions
+        id: tool_versions
+        run: bash .github/scripts/load-tool-versions.sh
 
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
@@ -116,14 +117,14 @@ jobs:
         uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
         with:
           distribution: goreleaser
-          version: v2.17.1
+          version: ${{ steps.tool_versions.outputs.GORELEASER_VERSION }}
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Attest CLI release artifacts
         id: attest_cli
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # pinned commit
         with:
           subject-checksums: ./dist/checksums.txt
           create-storage-record: false

@@ -174,10 +174,10 @@ Download pre-built binaries from the [releases page](https://github.com/nebari-d
 ### Build from Source
 
 ```sh
-go install github.com/nebari-dev/nebi/cmd/nebi@<tag-or-commit>
+go install github.com/nebari-dev/nebi/cmd/nebi@v0.14
 ```
 
-Requires Go 1.24+. Prefer a released tag or audited commit instead of a
+Requires Go 1.25+. Prefer a released tag or audited commit instead of a
 mutable version selector.
 
 ## Contributing

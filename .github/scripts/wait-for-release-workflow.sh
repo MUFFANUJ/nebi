@@ -3,7 +3,9 @@ set -euo pipefail
 
 workflow_name="${1:-Release}"
 poll_interval="${RELEASE_WORKFLOW_POLL_INTERVAL_SECONDS:-30}"
-max_attempts="${RELEASE_WORKFLOW_MAX_ATTEMPTS:-240}"
+# Default to 45 minutes: enough for the Release workflow to build the draft,
+# but short enough to avoid idling paid macOS/Windows release runners for hours.
+max_attempts="${RELEASE_WORKFLOW_MAX_ATTEMPTS:-90}"
 
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${GITHUB_SHA:?GITHUB_SHA is required}"
@@ -26,50 +28,7 @@ while [ "$attempt" -le "$max_attempts" ]; do
   runs_json="$tmpdir/workflow-runs.json"
   gh api "repos/${GITHUB_REPOSITORY}/actions/runs?event=push&head_sha=${GITHUB_SHA}&per_page=100" > "$runs_json"
 
-  result="$(
-    "$python_bin" - "$workflow_name" "$GITHUB_SHA" "$GITHUB_REF_NAME" "$runs_json" <<'PY'
-import json
-import sys
-
-workflow_name, expected_commit, expected_ref_name, runs_path = sys.argv[1:]
-with open(runs_path, encoding="utf-8") as f:
-    runs = json.load(f).get("workflow_runs", [])
-
-matches = []
-for run in runs:
-    if run.get("name") != workflow_name:
-        continue
-    if run.get("event") != "push" or run.get("head_sha") != expected_commit:
-        continue
-    head_branch = run.get("head_branch") or ""
-    if expected_ref_name and head_branch and head_branch != expected_ref_name:
-        continue
-    matches.append(run)
-
-if not matches:
-    print("not_found\t\t\t")
-    raise SystemExit(0)
-
-matches.sort(
-    key=lambda run: (
-        run.get("created_at", ""),
-        int(run.get("run_attempt") or 0),
-        int(run.get("id") or 0),
-    )
-)
-run = matches[-1]
-print(
-    "\t".join(
-        [
-            run.get("status") or "",
-            run.get("conclusion") or "",
-            str(run.get("id") or ""),
-            run.get("html_url") or "",
-        ]
-    )
-)
-PY
-  )"
+  result="$("$python_bin" .github/scripts/select-release-workflow-run.py "$workflow_name" "$GITHUB_SHA" "$GITHUB_REF_NAME" "$runs_json")"
 
   status="$(printf '%s\n' "$result" | awk -F '\t' '{print $1}')"
   conclusion="$(printf '%s\n' "$result" | awk -F '\t' '{print $2}')"

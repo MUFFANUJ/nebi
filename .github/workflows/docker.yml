@@ -24,10 +24,6 @@ env:
   REGISTRY: ${{ vars.DOCKER_REGISTRY || 'localhost' }}
   PROJECT: ${{ vars.DOCKER_PROJECT || 'fork-pr' }}
   IMAGE_NAME: nebi
-  COSIGN_VERSION: v2.6.1
-  CRANE_VERSION: v0.20.6
-  SYFT_VERSION: v1.40.0
-  TRIVY_VERSION: v0.72.0
 
 jobs:
   build:
@@ -39,6 +35,10 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
+      - name: Load pinned tool versions
+        id: tool_versions
+        run: bash .github/scripts/load-tool-versions.sh
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
@@ -195,7 +195,7 @@ jobs:
         with:
           scan-type: image
           image-ref: ${{ steps.image.outputs.tag }}
-          version: ${{ env.TRIVY_VERSION }}
+          version: ${{ steps.tool_versions.outputs.TRIVY_VERSION }}
           format: table
           exit-code: '1'
           ignore-unfixed: true
@@ -227,7 +227,7 @@ jobs:
 
       - name: Attest published image digest
         if: steps.registry.outputs.publish == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # pinned commit
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.PROJECT }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push_candidate.outputs.digest }}
@@ -236,7 +236,7 @@ jobs:
 
       - name: Attest published image SBOM
         if: steps.registry.outputs.publish == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # pinned commit
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.PROJECT }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push_candidate.outputs.digest }}
@@ -293,7 +293,7 @@ jobs:
 
       - name: Attest container image release metadata
         if: startsWith(github.ref, 'refs/tags/') && steps.registry.outputs.publish == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # pinned commit
         with:
           subject-path: nebi-container-image.json
           create-storage-record: false

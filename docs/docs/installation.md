@@ -69,10 +69,10 @@ conda install conda-forge::nebi
 
 For certain cases like development or testing, you can install Nebi from source.
 
-Prerequisite: Go version 1.24+
+Prerequisite: Go version 1.25+
 
 ```bash
-go install github.com/nebari-dev/nebi/cmd/nebi@<tag-or-commit>
+go install github.com/nebari-dev/nebi/cmd/nebi@v0.14
 ```
 
 Prefer a released tag or audited commit instead of a mutable version selector.

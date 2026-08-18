@@ -121,11 +121,12 @@ verify_cosign_blob() {
     fi
 
     identity="https://github.com/${REPO}/.github/workflows/${workflow}@refs/tags/${VERSION}"
-    if ! cosign verify-blob \
+    if ! output="$(cosign verify-blob \
         --bundle "$bundle_path" \
         --certificate-identity "$identity" \
         --certificate-oidc-issuer "$COSIGN_ISSUER" \
-        "$artifact_path" >/dev/null 2>&1; then
+        "$artifact_path" 2>&1)"; then
+        printf '%s\n' "$output" >&2
         error "Signature verification failed for $(basename "$artifact_path")."
     fi
 }
@@ -155,17 +156,6 @@ verify_checksum_from_file() {
     fi
 }
 
-verify_checksum_sidecar() {
-    artifact_path="$1"
-    checksum_path="$2"
-    expected="$(awk 'NF >= 1 {print $1; exit}' "$checksum_path")"
-    actual="$(sha256_file "$artifact_path")"
-
-    if [ -z "$expected" ] || [ "$actual" != "$expected" ]; then
-        error "Checksum verification failed for $(basename "$artifact_path")."
-    fi
-}
-
 verify_asset_signature() {
     artifact_path="$1"
     artifact_url="$2"
@@ -177,20 +167,6 @@ verify_asset_signature() {
         error "Failed to download signature: ${artifact_url}.sigstore.json"
 
     verify_cosign_blob "$artifact_path" "$bundle_path" "$workflow"
-}
-
-verify_signed_asset() {
-    artifact_path="$1"
-    artifact_url="$2"
-    workflow="$3"
-    checksum_path="${artifact_path}.sha256"
-
-    info "Downloading checksum for $(basename "$artifact_path")..."
-    download_file "$checksum_path" "${artifact_url}.sha256" || \
-        error "Failed to download checksum: ${artifact_url}.sha256"
-
-    verify_checksum_sidecar "$artifact_path" "$checksum_path"
-    verify_asset_signature "$artifact_path" "$artifact_url" "$workflow"
 }
 
 # Detect OS
@@ -283,7 +259,7 @@ if [ "$DESKTOP" -eq 1 ]; then
             download_file "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" || \
                 error "Failed to download desktop app: ${DESKTOP_URL}"
             info "Verifying ${DESKTOP_ARCHIVE}..."
-            verify_signed_asset "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
+            verify_asset_signature "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
             tar -xzf "${TMPDIR}/${DESKTOP_ARCHIVE}" -C "$TMPDIR"
             DESKTOP_BIN="${TMPDIR}/Nebi"
             if [ ! -f "$DESKTOP_BIN" ]; then
@@ -308,7 +284,7 @@ if [ "$DESKTOP" -eq 1 ]; then
             download_file "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" || \
                 error "Failed to download desktop app: ${DESKTOP_URL}"
             info "Verifying ${DESKTOP_ARCHIVE}..."
-            verify_signed_asset "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
+            verify_asset_signature "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
             unzip -q "${TMPDIR}/${DESKTOP_ARCHIVE}" -d "$TMPDIR"
             if [ -d "${TMPDIR}/Nebi.app" ]; then
                 if [ -w "/Applications" ]; then
