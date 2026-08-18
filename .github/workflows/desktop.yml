@@ -125,6 +125,7 @@ jobs:
       # Pin to the wails version in go.mod; unpinned installs broke when wails v2.13.0
       # started requiring a newer Go than this workflow uses.
       - name: Install wails
+        shell: bash
         run: go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
       - name: Install release supply-chain tools

@@ -39,12 +39,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          auth_header=()
           if [ -n "${GITHUB_TOKEN:-}" ]; then
-            auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
+            release="$(curl -fsSL -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/nebari-dev/nebi/releases/latest)"
+          else
+            release="$(curl -fsSL https://api.github.com/repos/nebari-dev/nebi/releases/latest)"
           fi
 
-          release="$(curl -fsSL "${auth_header[@]}" https://api.github.com/repos/nebari-dev/nebi/releases/latest)"
           tag="$(printf '%s' "$release" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag_name", ""))')"
           asset_names="$(printf '%s' "$release" | python3 -c 'import json,sys; print("\n".join(a.get("name", "") for a in json.load(sys.stdin).get("assets", [])))')"
 

@@ -280,6 +280,7 @@ jobs:
           digest="${{ steps.push_candidate.outputs.digest }}"
           cat > nebi-container-image.json <<EOF
           {
+            "component": "container",
             "image": "${image}",
             "digest": "${digest}",
             "reference": "${image}@${digest}",
