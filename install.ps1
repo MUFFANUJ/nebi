@@ -30,7 +30,7 @@ function Write-Info {
 
 function Write-Err {
     param([string]$Message)
-    Write-Host "Error: $Message" -ForegroundColor Red
+    [Console]::Error.WriteLine("Error: $Message")
     exit 1
 }
 
