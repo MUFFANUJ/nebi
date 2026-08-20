@@ -11,7 +11,7 @@ def latest_run(runs, workflow_name, expected_commit, expected_ref_name):
         if run.get("event") != "push" or run.get("head_sha") != expected_commit:
             continue
         head_branch = run.get("head_branch") or ""
-        if expected_ref_name and head_branch and head_branch != expected_ref_name:
+        if expected_ref_name and head_branch != expected_ref_name:
             continue
         matches.append(run)
 

@@ -32,6 +32,85 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           go install "github.com/sigstore/cosign/v2/cmd/cosign@${COSIGN_VERSION}"
 
+      - name: Exercise install.sh failure paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x install.sh
+
+          test_dir="$(mktemp -d)"
+          trap 'rm -rf "$test_dir"' EXIT
+          stub_bin="${test_dir}/bin"
+          assets="${test_dir}/assets"
+          mkdir -p "$stub_bin" "$assets"
+
+          case "$(uname -s)" in
+            Linux) archive_os="linux" ;;
+            Darwin) archive_os="macOS" ;;
+            *) echo "Unsupported test OS: $(uname -s)"; exit 1 ;;
+          esac
+          case "$(uname -m)" in
+            x86_64|amd64) archive_arch="x86_64" ;;
+            aarch64|arm64) archive_arch="arm64" ;;
+            *) echo "Unsupported test arch: $(uname -m)"; exit 1 ;;
+          esac
+
+          archive="nebi_0.0.0_${archive_os}_${archive_arch}.tar.gz"
+          printf 'not a tarball\n' > "${assets}/${archive}"
+          printf '0000000000000000000000000000000000000000000000000000000000000000  %s\n' "$archive" > "${assets}/checksums.txt"
+          printf '{}\n' > "${assets}/checksums.txt.sigstore.json"
+
+          cat > "${stub_bin}/curl" <<'EOF'
+          #!/bin/sh
+          set -eu
+          out=""
+          url=""
+          while [ "$#" -gt 0 ]; do
+              case "$1" in
+                  -o)
+                      out="$2"
+                      shift 2
+                      ;;
+                  -*)
+                      shift
+                      ;;
+                  *)
+                      url="$1"
+                      shift
+                      ;;
+              esac
+          done
+          asset="${url##*/}"
+          cp "${FIXTURE_ASSETS}/${asset}" "$out"
+          EOF
+          chmod +x "${stub_bin}/curl"
+
+          set +e
+          FIXTURE_ASSETS="$assets" PATH="${stub_bin}:/usr/bin:/bin" ./install.sh --version v0.0.0 --install-dir "${test_dir}/no-cosign" >"${test_dir}/no-cosign.out" 2>&1
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ] || ! grep -q "cosign is required" "${test_dir}/no-cosign.out"; then
+            cat "${test_dir}/no-cosign.out"
+            echo "Expected install.sh to fail when cosign is unavailable."
+            exit 1
+          fi
+
+          cat > "${stub_bin}/cosign" <<'EOF'
+          #!/bin/sh
+          exit 0
+          EOF
+          chmod +x "${stub_bin}/cosign"
+
+          set +e
+          FIXTURE_ASSETS="$assets" PATH="${stub_bin}:/usr/bin:/bin" ./install.sh --version v0.0.0 --install-dir "${test_dir}/bad-checksums" >"${test_dir}/bad-checksums.out" 2>&1
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ] || ! grep -q "Checksum verification failed" "${test_dir}/bad-checksums.out"; then
+            cat "${test_dir}/bad-checksums.out"
+            echo "Expected install.sh to fail on a corrupted checksums.txt."
+            exit 1
+          fi
+
       - name: Check latest release verification assets
         id: release_assets
         env:
@@ -56,7 +135,7 @@ jobs:
           done
 
           if [ -n "$missing" ]; then
-            echo "Latest release ${tag} predates signed installer verification assets; skipping installer smoke test."
+            echo "::warning::installer smoke test skipped for latest release ${tag}; missing verification asset(s):${missing}"
             echo "skipped=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -105,6 +184,77 @@ jobs:
           $goBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           go install "github.com/sigstore/cosign/v2/cmd/cosign@$env:COSIGN_VERSION"
 
+      - name: Exercise install.ps1 failure paths
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $testDir = Join-Path $env:RUNNER_TEMP ([System.Guid]::NewGuid().ToString("N"))
+          $stubBin = Join-Path $testDir "bin"
+          $assets = Join-Path $testDir "assets"
+          New-Item -ItemType Directory -Path $stubBin, $assets -Force | Out-Null
+
+          try {
+            $archive = "nebi_0.0.0_windows_x86_64.zip"
+            Set-Content -LiteralPath (Join-Path $assets $archive) -Value "not a zip" -Encoding ascii
+            Set-Content -LiteralPath (Join-Path $assets "checksums.txt") -Value ("0000000000000000000000000000000000000000000000000000000000000000  " + $archive) -Encoding ascii
+            Set-Content -LiteralPath (Join-Path $assets "checksums.txt.sigstore.json") -Value "{}" -Encoding ascii
+
+            $harness = Join-Path $testDir "run-install.ps1"
+            $harnessContent = @'
+          param(
+              [string]$RepoRoot,
+              [string]$Assets,
+              [string]$InstallDir,
+              [string]$CommandPath
+          )
+
+          $ErrorActionPreference = "Stop"
+          $env:FIXTURE_ASSETS = $Assets
+          $env:PATH = $CommandPath
+
+          function Invoke-WebRequest {
+              param(
+                  [string]$Uri,
+                  [string]$OutFile,
+                  [switch]$UseBasicParsing
+              )
+
+              $assetName = [System.IO.Path]::GetFileName(([System.Uri]$Uri).AbsolutePath)
+              Copy-Item -LiteralPath (Join-Path $env:FIXTURE_ASSETS $assetName) -Destination $OutFile -Force
+          }
+
+          & (Join-Path $RepoRoot "install.ps1") -Version "v0.0.0" -InstallDir $InstallDir
+          '@
+            Set-Content -LiteralPath $harness -Value $harnessContent -Encoding UTF8
+
+            $systemPath = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+            $commandPath = "$stubBin;$systemPath"
+
+            function Invoke-InstallerCase {
+              param(
+                [string]$Label,
+                [string]$Expected
+              )
+
+              $installDir = Join-Path $testDir $Label
+              $output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $harness -RepoRoot (Get-Location).Path -Assets $assets -InstallDir $installDir -CommandPath $commandPath 2>&1
+              $code = $LASTEXITCODE
+              $text = $output | Out-String
+              if ($code -eq 0 -or $text -notmatch [regex]::Escape($Expected)) {
+                Write-Host $text
+                throw "Expected install.ps1 to fail with: $Expected"
+              }
+            }
+
+            Invoke-InstallerCase -Label "no-cosign" -Expected "cosign is required"
+
+            "@echo off`r`necho Verified OK 1>&2`r`nexit /b 0`r`n" | Set-Content -LiteralPath (Join-Path $stubBin "cosign.cmd") -Encoding ascii
+            Invoke-InstallerCase -Label "bad-checksums" -Expected "Checksum verification failed"
+          } finally {
+            Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
       - name: Check latest release verification assets
         id: release_assets
         shell: pwsh
@@ -121,7 +271,7 @@ jobs:
           $assetNames = @($release.assets | ForEach-Object { $_.name })
           $missing = @("checksums.txt", "checksums.txt.sigstore.json") | Where-Object { $assetNames -notcontains $_ }
           if ($missing.Count -gt 0) {
-            Write-Host "Latest release $($release.tag_name) predates signed installer verification assets; skipping installer smoke test."
+            Write-Host "::warning::installer smoke test skipped for latest release $($release.tag_name); missing verification asset(s): $($missing -join ', ')"
             "skipped=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           }
 

@@ -54,11 +54,17 @@ function Confirm-CosignBlob {
     }
 
     $identity = "https://github.com/$Repo/.github/workflows/$Workflow@refs/tags/$Version"
-    $output = & cosign verify-blob `
-        --bundle $BundlePath `
-        --certificate-identity $identity `
-        --certificate-oidc-issuer $CosignIssuer `
-        $ArtifactPath 2>&1
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & cosign verify-blob `
+            --bundle $BundlePath `
+            --certificate-identity $identity `
+            --certificate-oidc-issuer $CosignIssuer `
+            $ArtifactPath 2>&1
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
     if ($LASTEXITCODE -ne 0) {
         $output | ForEach-Object { Write-Host $_ -ForegroundColor Red }
         Write-Err "Signature verification failed for $(Split-Path -Leaf $ArtifactPath)."

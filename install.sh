@@ -13,7 +13,7 @@ REPO="nebari-dev/nebi"
 INSTALL_DIR="$HOME/.local/bin"
 VERSION=""
 DESKTOP=0
-TMPDIR=""
+NEBI_TMPDIR=""
 COSIGN_ISSUER="https://token.actions.githubusercontent.com"
 RELEASE_WORKFLOW="release.yml"
 DESKTOP_WORKFLOW="desktop.yml"
@@ -32,8 +32,8 @@ EOF
 }
 
 cleanup() {
-    if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-        rm -rf "$TMPDIR"
+    if [ -n "$NEBI_TMPDIR" ] && [ -d "$NEBI_TMPDIR" ]; then
+        rm -rf "$NEBI_TMPDIR"
     fi
 }
 trap cleanup EXIT INT TERM
@@ -201,19 +201,19 @@ VERSION_NUM="${VERSION#v}"
 info "Installing nebi ${VERSION} for ${OS_NAME}/${ARCH_NAME}..."
 
 # Create temp directory
-TMPDIR="$(mktemp -d)"
+NEBI_TMPDIR="$(mktemp -d)"
 
 # Download and install CLI
 ARCHIVE_NAME="nebi_${VERSION_NUM}_${ARCHIVE_OS}_${ARCH_NAME}.tar.gz"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE_NAME}"
 
 info "Downloading ${ARCHIVE_NAME}..."
-if ! download_file "${TMPDIR}/${ARCHIVE_NAME}" "$DOWNLOAD_URL" 2>/dev/null; then
+if ! download_file "${NEBI_TMPDIR}/${ARCHIVE_NAME}" "$DOWNLOAD_URL" 2>/dev/null; then
     info "No binary available for nebi ${VERSION} on ${OS_NAME}/${ARCH_NAME}. Skipping installation."
     exit 2
 fi
 
-CHECKSUMS_PATH="${TMPDIR}/checksums.txt"
+CHECKSUMS_PATH="${NEBI_TMPDIR}/checksums.txt"
 CHECKSUMS_SIG_PATH="${CHECKSUMS_PATH}.sigstore.json"
 info "Downloading release checksums..."
 download_file "$CHECKSUMS_PATH" "https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt" || \
@@ -223,20 +223,20 @@ download_file "$CHECKSUMS_SIG_PATH" "https://github.com/${REPO}/releases/downloa
 
 info "Verifying ${ARCHIVE_NAME}..."
 verify_cosign_blob "$CHECKSUMS_PATH" "$CHECKSUMS_SIG_PATH" "$RELEASE_WORKFLOW"
-verify_checksum_from_file "${TMPDIR}/${ARCHIVE_NAME}" "$CHECKSUMS_PATH"
-verify_asset_signature "${TMPDIR}/${ARCHIVE_NAME}" "$DOWNLOAD_URL" "$RELEASE_WORKFLOW"
+verify_checksum_from_file "${NEBI_TMPDIR}/${ARCHIVE_NAME}" "$CHECKSUMS_PATH"
+verify_asset_signature "${NEBI_TMPDIR}/${ARCHIVE_NAME}" "$DOWNLOAD_URL" "$RELEASE_WORKFLOW"
 
 info "Extracting archive..."
-tar -xzf "${TMPDIR}/${ARCHIVE_NAME}" -C "$TMPDIR"
+tar -xzf "${NEBI_TMPDIR}/${ARCHIVE_NAME}" -C "$NEBI_TMPDIR"
 
 # Install binary
 mkdir -p "$INSTALL_DIR"
 if [ -w "$INSTALL_DIR" ]; then
-    cp "${TMPDIR}/nebi" "${INSTALL_DIR}/nebi"
+    cp "${NEBI_TMPDIR}/nebi" "${INSTALL_DIR}/nebi"
     chmod +x "${INSTALL_DIR}/nebi"
 else
     info "Install directory ${INSTALL_DIR} requires elevated permissions, using sudo..."
-    sudo cp "${TMPDIR}/nebi" "${INSTALL_DIR}/nebi"
+    sudo cp "${NEBI_TMPDIR}/nebi" "${INSTALL_DIR}/nebi"
     sudo chmod +x "${INSTALL_DIR}/nebi"
 fi
 
@@ -256,14 +256,14 @@ if [ "$DESKTOP" -eq 1 ]; then
             DESKTOP_ARCHIVE="nebi-desktop-linux-amd64.tar.gz"
             DESKTOP_URL="https://github.com/${REPO}/releases/download/${VERSION}/${DESKTOP_ARCHIVE}"
             info "Downloading ${DESKTOP_ARCHIVE}..."
-            download_file "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" || \
+            download_file "${NEBI_TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" || \
                 error "Failed to download desktop app: ${DESKTOP_URL}"
             info "Verifying ${DESKTOP_ARCHIVE}..."
-            verify_asset_signature "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
-            tar -xzf "${TMPDIR}/${DESKTOP_ARCHIVE}" -C "$TMPDIR"
-            DESKTOP_BIN="${TMPDIR}/Nebi"
+            verify_asset_signature "${NEBI_TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
+            tar -xzf "${NEBI_TMPDIR}/${DESKTOP_ARCHIVE}" -C "$NEBI_TMPDIR"
+            DESKTOP_BIN="${NEBI_TMPDIR}/Nebi"
             if [ ! -f "$DESKTOP_BIN" ]; then
-                DESKTOP_BIN="${TMPDIR}/nebi-desktop"
+                DESKTOP_BIN="${NEBI_TMPDIR}/nebi-desktop"
             fi
             if [ ! -f "$DESKTOP_BIN" ]; then
                 error "Desktop executable not found in the downloaded archive."
@@ -281,16 +281,16 @@ if [ "$DESKTOP" -eq 1 ]; then
             DESKTOP_ARCHIVE="nebi-desktop-macos-universal.zip"
             DESKTOP_URL="https://github.com/${REPO}/releases/download/${VERSION}/${DESKTOP_ARCHIVE}"
             info "Downloading ${DESKTOP_ARCHIVE}..."
-            download_file "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" || \
+            download_file "${NEBI_TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" || \
                 error "Failed to download desktop app: ${DESKTOP_URL}"
             info "Verifying ${DESKTOP_ARCHIVE}..."
-            verify_asset_signature "${TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
-            unzip -q "${TMPDIR}/${DESKTOP_ARCHIVE}" -d "$TMPDIR"
-            if [ -d "${TMPDIR}/Nebi.app" ]; then
+            verify_asset_signature "${NEBI_TMPDIR}/${DESKTOP_ARCHIVE}" "$DESKTOP_URL" "$DESKTOP_WORKFLOW"
+            unzip -q "${NEBI_TMPDIR}/${DESKTOP_ARCHIVE}" -d "$NEBI_TMPDIR"
+            if [ -d "${NEBI_TMPDIR}/Nebi.app" ]; then
                 if [ -w "/Applications" ]; then
-                    cp -R "${TMPDIR}/Nebi.app" "/Applications/Nebi.app"
+                    cp -R "${NEBI_TMPDIR}/Nebi.app" "/Applications/Nebi.app"
                 else
-                    sudo cp -R "${TMPDIR}/Nebi.app" "/Applications/Nebi.app"
+                    sudo cp -R "${NEBI_TMPDIR}/Nebi.app" "/Applications/Nebi.app"
                 fi
                 info "Desktop app installed to /Applications/Nebi.app"
             else

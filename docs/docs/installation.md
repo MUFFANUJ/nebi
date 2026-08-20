@@ -20,11 +20,11 @@ pixi global install nebi
 
 ## Installation script
 
-### Linux & MacOS
-
 The installer verifies release checksums and Sigstore signatures before
 extracting artifacts. Install `cosign` first from the
 [Sigstore installation docs](https://docs.sigstore.dev/cosign/system_config/installation/).
+
+### Linux & MacOS
 
 This installs the latest release of `nebi` to `~/.local/bin` (CLI and desktop app):
 

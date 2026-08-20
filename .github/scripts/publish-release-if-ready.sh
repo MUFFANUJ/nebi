@@ -106,6 +106,8 @@ for marker in "${marker_assets[@]}"; do
 done
 
 if [ "${#missing_markers[@]}" -gt 0 ]; then
+  missing_list="${missing_markers[*]}"
+  echo "::notice::Release ${GITHUB_REF_NAME} remains draft; waiting for release markers: ${missing_list}"
   echo "Release ${GITHUB_REF_NAME} remains draft; waiting for release markers:"
   printf '  %s\n' "${missing_markers[@]}"
   exit 0
