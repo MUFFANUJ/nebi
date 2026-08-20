@@ -225,6 +225,13 @@ jobs:
           }
 
           & (Join-Path $RepoRoot "install.ps1") -Version "v0.0.0" -InstallDir $InstallDir
+          $ok = $?
+          if ($null -ne $LASTEXITCODE) {
+              exit $LASTEXITCODE
+          }
+          if (-not $ok) {
+              exit 1
+          }
           '@
             Set-Content -LiteralPath $harness -Value $harnessContent -Encoding UTF8
 
@@ -256,9 +263,13 @@ jobs:
                 if (Test-Path $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw }
                 if (Test-Path $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw }
               ) -join [Environment]::NewLine
-              if ($code -eq 0 -or $text -notlike "*$Expected*") {
+              if ($code -eq 0) {
                 Write-Host $text
-                throw "Expected install.ps1 to fail with: $Expected"
+                throw "Expected install.ps1 to fail for case: $Label"
+              }
+              if ($text -notlike "*$Expected*") {
+                Write-Host $text
+                throw "Expected install.ps1 failure output to contain: $Expected"
               }
             }
 
