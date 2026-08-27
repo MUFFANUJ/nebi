@@ -30,7 +30,6 @@ export interface Workspace {
   owner?: User; // Optional owner details
   status: WorkspaceStatus;
   install_status?: InstallStatus;
-  package_manager: string;
   created_at: string;
   updated_at: string;
   size_bytes?: number;
@@ -44,7 +43,6 @@ export interface Workspace {
 
 export interface CreateWorkspaceRequest {
   name?: string;
-  package_manager?: string;
   pixi_toml?: string;
   path?: string;
   source?: 'local' | 'managed';
@@ -216,6 +214,7 @@ export interface OCIRegistry {
   is_default: boolean;
   namespace: string;
   config_managed: boolean;
+  restricted: boolean;
   created_at: string;
 }
 
@@ -227,6 +226,7 @@ export interface CreateRegistryRequest {
   api_token?: string;
   is_default?: boolean;
   namespace?: string;
+  restricted?: boolean;
 }
 
 export interface UpdateRegistryRequest {
@@ -237,6 +237,7 @@ export interface UpdateRegistryRequest {
   api_token?: string;
   is_default?: boolean;
   namespace?: string;
+  restricted?: boolean;
 }
 
 // Workspace Tag types
@@ -293,7 +294,6 @@ export interface RemoteWorkspace {
   id: string;
   name: string;
   status: string;
-  package_manager: string;
   size_bytes: number;
   owner?: {
     id: string;
@@ -322,7 +322,6 @@ export interface RemoteWorkspaceTag {
 
 export interface CreateRemoteWorkspaceRequest {
   name: string;
-  package_manager?: string;
   pixi_toml?: string;
 }
 
