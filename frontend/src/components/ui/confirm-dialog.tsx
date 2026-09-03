@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+// Local-only: the @nebari registry does not publish confirm-dialog.
+// Keep this app-specific wrapper on top of the registry Dialog composition.
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -38,26 +40,28 @@ export const ConfirmDialog = ({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      disablePointerDismissal
+    >
+      <DialogContent role="alertdialog" showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {cancelText}
+          </Button>
+          <Button
+            variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={handleConfirm}
-            className={
-              variant === 'destructive'
-                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-600'
-                : ''
-            }
           >
             {confirmText}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
