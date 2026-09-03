@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,35 @@ import (
 // ExtractBundle pre-pushes the empty content to the local store and
 // tells oras.Copy to skip the fetch (see the PreCopy hook).
 var emptyBlobDigest = digest.FromBytes(nil)
+
+const (
+	maxManifestBytes      int64 = 1 * 1024 * 1024
+	maxQuayErrorBodyBytes int64 = 64 * 1024
+	maxPixiLayerBytes     int64 = 16 * 1024 * 1024
+)
+
+type readLimitError struct {
+	bodyName string
+	maxBytes int64
+}
+
+func (e *readLimitError) Error() string {
+	return fmt.Sprintf("%s exceeds %d bytes", e.bodyName, e.maxBytes)
+}
+
+func readAllBounded(r io.Reader, maxBytes int64, bodyName string) ([]byte, error) {
+	if maxBytes < 0 {
+		return nil, fmt.Errorf("%s has invalid negative limit %d bytes", bodyName, maxBytes)
+	}
+	data, err := io.ReadAll(io.LimitReader(r, maxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxBytes {
+		return data[:maxBytes], &readLimitError{bodyName: bodyName, maxBytes: maxBytes}
+	}
+	return data, nil
+}
 
 // BrowseOptions contains options for browsing an OCI registry
 type BrowseOptions struct {
@@ -358,7 +388,7 @@ func resolveBundleManifest(
 	if err != nil {
 		return nil, cm, fmt.Errorf("failed to fetch manifest: %w", err)
 	}
-	manifestData, err := io.ReadAll(manifestReader)
+	manifestData, err := readAllBounded(manifestReader, maxManifestBytes, "manifest")
 	manifestReader.Close()
 	if err != nil {
 		return nil, cm, fmt.Errorf("failed to read manifest: %w", err)
@@ -548,7 +578,7 @@ func IsNebiRepository(ctx context.Context, repoRef string, opts BrowseOptions) b
 	}
 	defer manifestReader.Close()
 
-	manifestData, err := io.ReadAll(manifestReader)
+	manifestData, err := readAllBounded(manifestReader, maxManifestBytes, "manifest")
 	if err != nil {
 		return false
 	}
@@ -632,31 +662,42 @@ func ChangeRepositoryVisibility(ctx context.Context, host, repoPath, apiToken st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, err := readAllBounded(resp.Body, maxQuayErrorBodyBytes, "visibility API error body")
+		if err != nil {
+			if len(respBody) > 0 {
+				return fmt.Errorf("visibility API returned status %d: %s: %w", resp.StatusCode, string(respBody), err)
+			}
+			return fmt.Errorf("visibility API returned status %d: failed to read response body: %w", resp.StatusCode, err)
+		}
 		return fmt.Errorf("visibility API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	return nil
 }
 
-// fetchLayerBytes returns the full raw bytes for a layer descriptor.
-// The body is bounded to desc.Size+1 so a registry that omits
-// Content-Length and serves an oversized stream cannot exhaust RAM —
-// the size cap in resolveBundleManifest only sees the manifest's
-// declared sizes, not the actual transport bytes.
+// fetchLayerBytes returns the full raw bytes for a core pixi file layer.
+// It first rejects declared sizes above maxPixiLayerBytes, then reads at
+// most desc.Size+1 bytes so an oversized transport body is caught too.
 func fetchLayerBytes(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor) ([]byte, error) {
+	if desc.Size > maxPixiLayerBytes {
+		title := desc.Annotations[ocispec.AnnotationTitle]
+		if title == "" {
+			title = "layer"
+		}
+		return nil, fmt.Errorf("%s layer size %d bytes exceeds cap %d bytes", title, desc.Size, maxPixiLayerBytes)
+	}
 	reader, err := repo.Fetch(ctx, desc)
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
-	limited := io.LimitReader(reader, desc.Size+1)
-	buf, err := io.ReadAll(limited)
+	buf, err := readAllBounded(reader, desc.Size, "layer body")
 	if err != nil {
+		var limitErr *readLimitError
+		if errors.As(err, &limitErr) {
+			return nil, fmt.Errorf("layer body exceeds declared size %d", desc.Size)
+		}
 		return nil, err
-	}
-	if int64(len(buf)) > desc.Size {
-		return nil, fmt.Errorf("layer body exceeds declared size %d", desc.Size)
 	}
 	return buf, nil
 }
