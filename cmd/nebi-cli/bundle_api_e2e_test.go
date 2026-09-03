@@ -102,10 +102,10 @@ exit 0
 	serverErr := make(chan error, 1)
 	go func() {
 		serverErr <- server.Run(ctx, server.Config{
-			Port:          port,
-			ComponentMode: "both",
-			RuntimeMode:   config.ModeLocal,
-			Version:       "e2e-bundle-api-test",
+			Port:        port,
+			Mode:        "both",
+			RuntimeMode: config.ModeLocal,
+			Version:     "e2e-bundle-api-test",
 		})
 	}()
 	waitForHealth(serverURL+"/api/v1/health", serverErr, io.Discard)

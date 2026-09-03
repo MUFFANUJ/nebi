@@ -53,12 +53,12 @@ func init() {
 
 func run(cmd *cobra.Command, args []string) {
 	cfg := server.Config{
-		Host:          host,
-		Port:          port,
-		ComponentMode: componentMode,
-		RuntimeMode:   config.ModeTeam,
-		Version:       Version,
-		Commit:        Commit,
+		Host:        host,
+		Port:        port,
+		Mode:        componentMode,
+		RuntimeMode: config.ModeTeam,
+		Version:     Version,
+		Commit:      Commit,
 	}
 
 	if err := server.RunWithSignalHandling(cfg); err != nil {

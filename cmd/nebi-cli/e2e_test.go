@@ -107,9 +107,9 @@ func TestMain(m *testing.M) {
 	serverErr := make(chan error, 1)
 	go func() {
 		serverErr <- server.Run(ctx, server.Config{
-			Port:          port,
-			ComponentMode: "both",
-			Version:       "e2e-test",
+			Port:    port,
+			Mode:    "both",
+			Version: "e2e-test",
 		})
 	}()
 
