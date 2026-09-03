@@ -59,7 +59,7 @@ irm https://nebi.nebari.dev/install.ps1 | iex
 
 ## Install with conda
 
-The currently published conda-forge packages provide the CLI and desktop app:
+The currently published conda-forge packages provide the CLI and desktop app. The CLI package installs the `nebi` command:
 
 ```bash
 conda install conda-forge::nebi-cli conda-forge::nebi-desktop
@@ -71,13 +71,15 @@ The split `nebi-server` and `nebi-web` conda-forge packages are part of the bina
 
 For certain cases like development or testing, you can install Nebi from source.
 
-Prerequisite: Go version 1.25+
+Prerequisites: Go 1.25+ and Node.js 20+
+
+From a source checkout:
 
 ```bash
-go install github.com/nebari-dev/nebi/cmd/nebi-cli@latest
-go install github.com/nebari-dev/nebi/cmd/nebi-server@latest
-go install github.com/nebari-dev/nebi/cmd/nebi-web@latest
+make build
 ```
+
+This builds `bin/nebi`, `bin/nebi-server`, and `bin/nebi-web`.
 
 From a source checkout, build the desktop app with Wails because it packages a native app wrapper:
 

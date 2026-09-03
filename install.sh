@@ -158,33 +158,24 @@ install_binary() {
     fi
 }
 
-if [ -x "${TMPDIR}/nebi-cli" ]; then
-    CLI_SRC="${TMPDIR}/nebi-cli"
-    REQUIRE_SPLIT_BINS=1
-elif [ -x "${TMPDIR}/nebi" ]; then
-    CLI_SRC="${TMPDIR}/nebi"
-    REQUIRE_SPLIT_BINS=0
-else
-    error "nebi-cli not found in ${ARCHIVE_NAME}."
+if [ ! -x "${TMPDIR}/nebi" ]; then
+    error "nebi not found in ${ARCHIVE_NAME}."
 fi
 
-install_binary "$CLI_SRC" "nebi-cli"
-install_binary "$CLI_SRC" "nebi"
-info "nebi-cli installed to ${INSTALL_DIR}/nebi-cli"
-info "Compatibility command installed to ${INSTALL_DIR}/nebi"
+install_binary "${TMPDIR}/nebi" "nebi"
+info "nebi installed to ${INSTALL_DIR}/nebi"
 
 for bin in nebi-server nebi-web; do
-    if [ -x "${TMPDIR}/${bin}" ]; then
-        install_binary "${TMPDIR}/${bin}" "$bin"
-        info "${bin} installed to ${INSTALL_DIR}/${bin}"
-    elif [ "$REQUIRE_SPLIT_BINS" -eq 1 ]; then
+    if [ ! -x "${TMPDIR}/${bin}" ]; then
         error "${bin} not found in ${ARCHIVE_NAME}."
     fi
+    install_binary "${TMPDIR}/${bin}" "$bin"
+    info "${bin} installed to ${INSTALL_DIR}/${bin}"
 done
 
 # Verify installation
-if [ -x "${INSTALL_DIR}/nebi-cli" ]; then
-    INSTALLED_VERSION="$("${INSTALL_DIR}/nebi-cli" version 2>/dev/null || true)"
+if [ -x "${INSTALL_DIR}/nebi" ]; then
+    INSTALLED_VERSION="$("${INSTALL_DIR}/nebi" version 2>/dev/null || true)"
     info "Installed: ${INSTALLED_VERSION}"
 fi
 

@@ -12,17 +12,17 @@ import (
 var completionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish|powershell]",
 	Short: "Generate shell completion scripts",
-	Long: `Generate shell completion scripts for nebi-cli.
+	Long: `Generate shell completion scripts for nebi.
 
 To load completions:
 
 Bash:
-  $ source <(nebi-cli completion bash)
+  $ source <(nebi completion bash)
   # To load completions for each session, execute once:
   # Linux:
-  $ nebi-cli completion bash > /etc/bash_completion.d/nebi-cli
+  $ nebi completion bash > /etc/bash_completion.d/nebi
   # macOS:
-  $ nebi-cli completion bash > $(brew --prefix)/etc/bash_completion.d/nebi-cli
+  $ nebi completion bash > $(brew --prefix)/etc/bash_completion.d/nebi
 
 Zsh:
   # If shell completion is not already enabled in your environment,
@@ -30,19 +30,19 @@ Zsh:
   $ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
   # To load completions for each session, execute once:
-  $ nebi-cli completion zsh > "${fpath[1]}/_nebi-cli"
+  $ nebi completion zsh > "${fpath[1]}/_nebi"
 
   # You will need to start a new shell for this setup to take effect.
 
 Fish:
-  $ nebi-cli completion fish | source
+  $ nebi completion fish | source
   # To load completions for each session, execute once:
-  $ nebi-cli completion fish > ~/.config/fish/completions/nebi-cli.fish
+  $ nebi completion fish > ~/.config/fish/completions/nebi.fish
 
 PowerShell:
-  PS> nebi-cli completion powershell | Out-String | Invoke-Expression
+  PS> nebi completion powershell | Out-String | Invoke-Expression
   # To load completions for every new session, run:
-  PS> nebi-cli completion powershell > nebi-cli.ps1
+  PS> nebi completion powershell > nebi.ps1
   # and source this file from your PowerShell profile.
 `,
 	DisableFlagsInUseLine: true,

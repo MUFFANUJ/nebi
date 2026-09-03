@@ -34,8 +34,8 @@ var workspaceListCmd = &cobra.Command{
 With --remote, lists environments on the configured server.
 
 Examples:
-  nebi-cli workspace list              # local workspaces
-  nebi-cli workspace list --remote     # workspaces on server`,
+  nebi workspace list              # local workspaces
+  nebi workspace list --remote     # workspaces on server`,
 	Args: cobra.NoArgs,
 	RunE: runWorkspaceList,
 }
@@ -46,7 +46,7 @@ var workspaceTagsCmd = &cobra.Command{
 	Long: `List tags for a remote workspace.
 
 Examples:
-  nebi-cli workspace tags myworkspace`,
+  nebi workspace tags myworkspace`,
 	Args:              cobra.ExactArgs(1),
 	RunE:              runWorkspaceTags,
 	ValidArgsFunction: completeServerWorkspaceNames,
@@ -61,7 +61,7 @@ The install runs as a server job; progress is streamed to the terminal.
 Only available when the server runs in local mode.
 
 Examples:
-  nebi-cli workspace install myworkspace`,
+  nebi workspace install myworkspace`,
 	Args:              cobra.ExactArgs(1),
 	RunE:              runWorkspaceInstall,
 	ValidArgsFunction: completeServerWorkspaceNames,
@@ -77,7 +77,7 @@ workspace can be reinstalled later. Only available when the server runs
 in local mode.
 
 Examples:
-  nebi-cli workspace uninstall myworkspace`,
+  nebi workspace uninstall myworkspace`,
 	Args:              cobra.ExactArgs(1),
 	RunE:              runWorkspaceUninstall,
 	ValidArgsFunction: completeServerWorkspaceNames,
@@ -99,11 +99,11 @@ By default removes from the local index:
 With --remote, deletes the workspace from the configured server.
 
 Examples:
-  nebi-cli workspace remove                     # remove workspace in current directory
-  nebi-cli workspace remove .                   # same as above
-  nebi-cli workspace remove data-science        # remove workspace by name
-  nebi-cli workspace remove ./my-project        # remove workspace by path
-  nebi-cli workspace remove myenv --remote      # delete workspace from server`,
+  nebi workspace remove                     # remove workspace in current directory
+  nebi workspace remove .                   # same as above
+  nebi workspace remove data-science        # remove workspace by name
+  nebi workspace remove ./my-project        # remove workspace by path
+  nebi workspace remove myenv --remote      # delete workspace from server`,
 	Args:              cobra.MaximumNArgs(1),
 	RunE:              runWorkspaceRemove,
 	ValidArgsFunction: completeWorkspaceRemove,
@@ -124,7 +124,7 @@ var workspacePruneCmd = &cobra.Command{
 The tracking entry is removed; no files are affected.
 
 Examples:
-  nebi-cli workspace prune`,
+  nebi workspace prune`,
 	Args: cobra.NoArgs,
 	RunE: runWorkspacePrune,
 }
@@ -222,7 +222,7 @@ func runWorkspaceListLocal() error {
 		if wsListJSON {
 			return writeJSON([]store.LocalWorkspace{})
 		}
-		fmt.Fprintln(os.Stderr, "No tracked workspaces. Run 'nebi-cli init' in a pixi workspace to get started.")
+		fmt.Fprintln(os.Stderr, "No tracked workspaces. Run 'nebi init' in a pixi workspace to get started.")
 		return nil
 	}
 
@@ -271,7 +271,7 @@ func runWorkspaceListLocal() error {
 		return err
 	}
 	if missing > 0 {
-		fmt.Fprintf(os.Stderr, "\n%d workspace(s) have missing paths. Run 'nebi-cli workspace prune' to clean up.\n", missing)
+		fmt.Fprintf(os.Stderr, "\n%d workspace(s) have missing paths. Run 'nebi workspace prune' to clean up.\n", missing)
 	}
 	return nil
 }
@@ -430,7 +430,7 @@ func runWorkspaceRemoveLocal(arg string) error {
 			return err
 		}
 		if ws == nil {
-			return fmt.Errorf("no tracked workspace in current directory; run 'nebi-cli workspace list' to see available workspaces")
+			return fmt.Errorf("no tracked workspace in current directory; run 'nebi workspace list' to see available workspaces")
 		}
 	} else if strings.Contains(arg, "/") || strings.Contains(arg, string(filepath.Separator)) {
 		absPath, err := filepath.Abs(arg)
@@ -451,7 +451,7 @@ func runWorkspaceRemoveLocal(arg string) error {
 		}
 		switch len(workspaces) {
 		case 0:
-			return fmt.Errorf("workspace %q not found; use 'nebi-cli workspace list' to see available workspaces", arg)
+			return fmt.Errorf("workspace %q not found; use 'nebi workspace list' to see available workspaces", arg)
 		case 1:
 			ws = &workspaces[0]
 		default:

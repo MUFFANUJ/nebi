@@ -14,7 +14,7 @@ var logoutCmd = &cobra.Command{
 	Long: `Removes stored server URL and credentials.
 
 Examples:
-  nebi-cli logout`,
+  nebi logout`,
 	Args: cobra.NoArgs,
 	RunE: runLogout,
 }

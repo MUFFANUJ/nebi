@@ -1,7 +1,7 @@
 .PHONY: help build build-frontend build-cli build-server build-web build-backend run swagger migrate test clean install-tools dev build-docker-pixi build-docker test-pixi build-all build-platforms build-desktop
 
 # Variables
-CLI_BINARY=nebi-cli
+CLI_BINARY=nebi
 SERVER_BINARY=nebi-server
 WEB_BINARY=nebi-web
 FRONTEND_DIR=frontend

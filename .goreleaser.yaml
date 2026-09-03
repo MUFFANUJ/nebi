@@ -11,7 +11,7 @@ before:
 builds:
   - id: nebi-cli
     main: ./cmd/nebi-cli
-    binary: nebi-cli
+    binary: nebi
     env:
       - CGO_ENABLED=0
     goos:

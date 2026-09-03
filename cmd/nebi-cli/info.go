@@ -29,8 +29,8 @@ var infoCmd = &cobra.Command{
 authentication status, and current workspace.
 
 Examples:
-  nebi-cli info
-  nebi-cli info --json`,
+  nebi info
+  nebi info --json`,
 	Args: cobra.NoArgs,
 	RunE: runInfo,
 }

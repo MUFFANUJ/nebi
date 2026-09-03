@@ -129,7 +129,7 @@ func (s *JobService) MarkPanicked(job *models.Job, panicMsg string) {
 // workspace whose environment was reinstalled outside the explicit
 // install flow (e.g. the worker's auto-reinstall after an update or
 // rollback). It exists so that failure surfaces through the same
-// install_status derivation an explicit `nebi-cli workspace install` failure
+// install_status derivation an explicit `nebi workspace install` failure
 // would, without ever failing the job that triggered the reinstall.
 func (s *JobService) RecordFailedEnvInstall(workspaceID uuid.UUID, errMsg string) error {
 	now := time.Now()

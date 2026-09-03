@@ -37,7 +37,7 @@ var registryListCmd = &cobra.Command{
 	Long: `List OCI registries configured on the nebi server.
 
 Examples:
-  nebi-cli registry list`,
+  nebi registry list`,
 	Args: cobra.NoArgs,
 	RunE: runRegistryList,
 }
@@ -49,13 +49,13 @@ var registryAddCmd = &cobra.Command{
 
 Examples:
   # Interactive - prompts for password
-  nebi-cli registry add --name ghcr --url ghcr.io --username myuser
+  nebi registry add --name ghcr --url ghcr.io --username myuser
 
   # Programmatic - read password from stdin
-  echo "$TOKEN" | nebi-cli registry add --name quay --url quay.io --namespace nebari_environments --username myuser --password-stdin
+  echo "$TOKEN" | nebi registry add --name quay --url quay.io --namespace nebari_environments --username myuser --password-stdin
 
   # Public registry (no auth)
-  nebi-cli registry add --name dockerhub --url docker.io --default`,
+  nebi registry add --name dockerhub --url docker.io --default`,
 	Args: cobra.NoArgs,
 	RunE: runRegistryAdd,
 }
@@ -67,8 +67,8 @@ var registrySetDefaultCmd = &cobra.Command{
 default registry is unset atomically.
 
 Examples:
-  nebi-cli registry set-default quay
-  nebi-cli registry set-default quay --local`,
+  nebi registry set-default quay
+  nebi registry set-default quay --local`,
 	Args: cobra.ExactArgs(1),
 	RunE: runRegistrySetDefault,
 }
@@ -81,10 +81,10 @@ var registryRemoveCmd = &cobra.Command{
 
 Examples:
   # Interactive - prompts for confirmation
-  nebi-cli registry remove ghcr
+  nebi registry remove ghcr
 
   # Skip confirmation
-  nebi-cli registry remove ghcr --force`,
+  nebi registry remove ghcr --force`,
 	Args: cobra.ExactArgs(1),
 	RunE: runRegistryRemove,
 }

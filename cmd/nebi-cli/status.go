@@ -42,7 +42,7 @@ If the server is reachable, checks whether the local files or server version
 have changed since the last sync.
 
 Examples:
-  nebi-cli status`,
+  nebi status`,
 	Args: cobra.NoArgs,
 	RunE: runStatus,
 }
@@ -67,7 +67,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		if statusJSON {
 			return fmt.Errorf("not a tracked workspace")
 		}
-		fmt.Fprintln(os.Stderr, "Not a tracked workspace. Run 'nebi-cli init'.")
+		fmt.Fprintln(os.Stderr, "Not a tracked workspace. Run 'nebi init'.")
 		return nil
 	}
 

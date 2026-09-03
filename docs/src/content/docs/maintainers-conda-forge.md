@@ -6,7 +6,7 @@ sidebar:
 
 The split Nebi release is packaged as four conda-forge packages after the feedstocks are set up:
 
-- **`nebi-cli`** — the CLI client (pure Go, `go-nocgo`)
+- **`nebi-cli`** — the CLI package; it builds `./cmd/nebi-cli` and installs the `nebi` executable (pure Go, `go-nocgo`)
 - **`nebi-server`** — the team server (pure Go, `go-nocgo`)
 - **`nebi-web`** — the local web app (pure Go, `go-nocgo`)
 - **`nebi-desktop`** — the Wails desktop app (`go-cgo` + GTK3 + WebKit2GTK on Linux)
@@ -43,7 +43,7 @@ Recipes are maintained in the feedstock repos (linked above). They use the **v1 
 ### nebi-cli, nebi-server, and nebi-web
 
 - **Compiler**: `go-nocgo` (pure Go, no CGO)
-- **Build**: installs npm deps → builds React frontend → embeds in Go binaries via `//go:embed` → `go build ./cmd/nebi-cli`, `./cmd/nebi-server`, and `./cmd/nebi-web`
+- **Build**: installs npm deps → builds React frontend → embeds in Go binaries via `//go:embed` → `go build -o nebi ./cmd/nebi-cli`, `go build ./cmd/nebi-server`, and `go build ./cmd/nebi-web`
 - **License**: `go-licenses` collects all transitive Go dependency licenses
 - **Platforms**: linux-64, linux-aarch64, osx-64, osx-arm64, win-64
 

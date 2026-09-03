@@ -16,7 +16,7 @@ Before starting the server for the first time, set `ADMIN_USERNAME` and `ADMIN_P
 
 ![Nebi login screen](/img/login-nebi.png)
 
-You (and your team) will use these credentials to log in via `nebi-cli login` or the web UI.
+You (and your team) will use these credentials to log in via `nebi login` or the web UI.
 
 Export the variables in your terminal session before starting the server:
 
@@ -48,7 +48,7 @@ To explicitly bind a host/interface, use `--host` (or `NEBI_SERVER_HOST`):
 nebi-server --host 127.0.0.1 --port 8460
 ```
 
-Once the server is running, authenticate from any client machine with [`nebi-cli login`](/cli-team/#connect-to-a-server).
+Once the server is running, authenticate from any client machine with [`nebi login`](/cli-team/#connect-to-a-server).
 
 For a single-user browser UI on your own machine, use `nebi-web` instead. It runs the same embedded React frontend in local mode and binds to `127.0.0.1` by default.
 

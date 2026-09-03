@@ -12,11 +12,11 @@ Nebi lets you version your software environments the same way git versions your 
 
 ## Create a Workspace
 
-Before you can version or share an environment, Nebi needs to track it. `nebi-cli init` creates a workspace in the current directory.
+Before you can version or share an environment, Nebi needs to track it. `nebi init` creates a workspace in the current directory.
 
 ```bash
 mkdir my-project && cd my-project
-nebi-cli init
+nebi init
 ```
 
 ```bash title="Output"
@@ -43,18 +43,18 @@ my-project/
 
 ## Push to the Server
 
-Just like `git push` saves your code to a remote, `nebi-cli push` saves your environment spec to a Nebi server.
+Just like `git push` saves your code to a remote, `nebi push` saves your environment spec to a Nebi server.
 
 You need a running server to push to. See [Server Setup](/server-setup/) if you haven't set one up yet, then log in:
 
 ```bash
-nebi-cli login http://localhost:8460
+nebi login http://localhost:8460
 ```
 
 Then push the workspace with a version tag:
 
 ```bash
-nebi-cli push my-project:v1.0
+nebi push my-project:v1.0
 ```
 
 ```bash title="Output"
@@ -67,15 +67,15 @@ To see how versioning helps, you need at least two versions to compare. Add a pa
 
 ```bash
 pixi add pandas
-nebi-cli push my-project:v2.0
+nebi push my-project:v2.0
 ```
 
 ## Compare Versions
 
-Before pulling a version, you can preview what would change. `nebi-cli diff` compares any two versions on the server, or a server version against your local workspace.
+Before pulling a version, you can preview what would change. `nebi diff` compares any two versions on the server, or a server version against your local workspace.
 
 ```bash
-nebi-cli diff my-project:v1.0 my-project:v2.0
+nebi diff my-project:v1.0 my-project:v2.0
 ```
 
 ```bash title="Output"
@@ -92,7 +92,7 @@ Once a version is on the server, anyone on your team can pull it to their own ma
 
 ```bash
 mkdir teammate && cd teammate
-nebi-cli pull my-project:v2.0
+nebi pull my-project:v2.0
 ```
 
 ```bash title="Output"

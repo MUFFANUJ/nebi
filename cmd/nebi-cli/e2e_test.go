@@ -1702,7 +1702,7 @@ func TestE2E_PullAutoTracksWorkspace(t *testing.T) {
 		t.Fatalf("push failed: %s %s", res.Stdout, res.Stderr)
 	}
 
-	// Pull into a fresh, untracked directory (no nebi-cli init)
+	// Pull into a fresh, untracked directory (no nebi init)
 	dstDir := t.TempDir()
 	res = runCLI(t, dstDir, "pull", wsName+":"+tag)
 	if res.ExitCode != 0 {
@@ -1736,7 +1736,7 @@ func TestE2E_PushAutoTracksWorkspace(t *testing.T) {
 	wsName := "e2e-push-autotrack"
 	tag := "v1.0"
 
-	// Create a workspace directory with pixi files but do NOT run nebi-cli init
+	// Create a workspace directory with pixi files but do NOT run nebi init
 	dir := t.TempDir()
 	toml := "[project]\nname = \"autotrack-push\"\nchannels = [\"conda-forge\"]\nplatforms = [\"linux-64\"]\n"
 	lock := "version: 6\npackages: []\n"

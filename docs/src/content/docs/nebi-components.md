@@ -2,7 +2,7 @@
 title: "Nebi components"
 ---
 
-It has four executables: **nebi-cli**, **nebi-server**, **nebi-web**, and **nebi-desktop**. They share the same core libraries but serve different use cases.
+It has four executables: **nebi**, **nebi-server**, **nebi-web**, and **nebi-desktop**. They share the same core libraries but serve different use cases.
 
 ## System overview
 
@@ -10,7 +10,7 @@ It has four executables: **nebi-cli**, **nebi-server**, **nebi-web**, and **nebi
 
 ## CLI
 
-`nebi-cli` is a standalone tool for managing and tracking Pixi workspaces on your local machines, both for [solo use](/cli-local/) and for [team workflows](/cli-team/) backed by a Nebi server. Every command is documented in the [CLI reference](/cli-reference/).
+`nebi` is a standalone CLI tool for managing and tracking Pixi workspaces on your local machines, both for [solo use](/cli-local/) and for [team workflows](/cli-team/) backed by a Nebi server. Its source entry point lives in `cmd/nebi-cli`, and every command is documented in the [CLI reference](/cli-reference/).
 
 - **Local database**: Track workspace names, paths, and versions in a local database
 - **Pixi shell/run**: Open a pixi shell or run pixi tasks by workspace name
@@ -26,7 +26,7 @@ The [desktop app](/ui/) is another tool for managing Pixi workspaces on your loc
 
 Nebi can publish **workspace bundles** to any [OCI-compliant registry](/registry-setup/) such as GitHub Container Registry, Quay.io, or self-hosted registries. A bundle always contains `pixi.toml` and `pixi.lock`, and may also include other project files (READMEs, source code, data).
 
-- Publishing can be done from the CLI (`nebi-cli publish`) or triggered from the desktop app or server
+- Publishing can be done from the CLI (`nebi publish`) or triggered from the desktop app or server
 - The desktop app and server UI include a registry browser for discovering and pulling published bundles
 
 Bundles are packed into an OCI Image Manifest with custom media types for the spec and for each asset layer. Each push creates a content-addressed tag (`sha-<hash>`) plus a `latest` tag and any user-specified tags.

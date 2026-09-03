@@ -38,7 +38,7 @@ Clone the example to follow along with this tutorial:
 ```bash
 git clone https://github.com/nebari-dev/nebi.git
 cd nebi/docs/examples/data-science-demo
-nebi-cli init
+nebi init
 ```
 
 :::
@@ -162,7 +162,7 @@ Alice's workspace now looks like this:
 Before publishing, configure a default registry (see [Registry Setup](/registry-setup/) for details):
 
 ```bash
-nebi-cli registry add \
+nebi registry add \
   --default \
   --name <name> \
   --url <url> \
@@ -173,7 +173,7 @@ nebi-cli registry add \
 For example, here's how it looks with Docker Hub:
 
 ```bash
-nebi-cli registry add \
+nebi registry add \
   --name dockerhub \
   --url docker.io \
   --namespace alice \
@@ -189,7 +189,7 @@ Added local registry 'dockerhub' (docker.io)
 Then publish. The `--tag` sets the version and `--repo` names the repository:
 
 ```bash
-nebi-cli publish data-science-demo --tag v1.0 --repo data-science-demo
+nebi publish data-science-demo --tag v1.0 --repo data-science-demo
 ```
 
 Example output with Docker Hub:
@@ -209,13 +209,13 @@ Bob doesn't need to know what packages Alice chose or how the environment was bu
 To recreate Alice's environment locally, Bob just needs to import the bundle:
 
 ```bash
-nebi-cli import <url>/<namespace>/data-science-demo:v1.0
+nebi import <url>/<namespace>/data-science-demo:v1.0
 ```
 
 For example, with Alice's Docker Hub registry, the command would be:
 
 ```bash
-nebi-cli import docker.io/alice/data-science-demo:v1.0
+nebi import docker.io/alice/data-science-demo:v1.0
 ```
 
 This restores all of Alice's workspace files into the current directory at their original relative paths:
@@ -257,10 +257,10 @@ Here's the full flow at a glance:
 
 | Step | Who | Command |
 |------|-----|---------|
-| Create workspace | Alice | `nebi-cli init` + `pixi add` |
+| Create workspace | Alice | `nebi init` + `pixi add` |
 | Add tasks | Alice | Edit `pixi.toml` |
-| Publish to OCI | Alice | `nebi-cli publish` |
-| Import environment | Bob | `nebi-cli import` |
+| Publish to OCI | Alice | `nebi publish` |
+| Import environment | Bob | `nebi import` |
 | Run task | Bob | `pixi run train` |
 
 With Nebi, Bob gets the same packages, the same versions, the same project files, and the same results as Alice without any manual setup.

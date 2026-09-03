@@ -82,29 +82,21 @@ try {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     }
 
-    $CliSource = Join-Path $ExtractDir "nebi-cli.exe"
-    $RequireSplitBins = $true
+    $CliSource = Join-Path $ExtractDir "nebi.exe"
     if (-not (Test-Path $CliSource)) {
-        $CliSource = Join-Path $ExtractDir "nebi.exe"
-        $RequireSplitBins = $false
-    }
-    if (-not (Test-Path $CliSource)) {
-        Write-Err "nebi-cli.exe not found in $ArchiveName."
+        Write-Err "nebi.exe not found in $ArchiveName."
     }
 
-    Copy-Item -Path $CliSource -Destination (Join-Path $InstallDir "nebi-cli.exe") -Force
     Copy-Item -Path $CliSource -Destination (Join-Path $InstallDir "nebi.exe") -Force
-    Write-Info "nebi-cli installed to $(Join-Path $InstallDir 'nebi-cli.exe')"
-    Write-Info "Compatibility command installed to $(Join-Path $InstallDir 'nebi.exe')"
+    Write-Info "nebi installed to $(Join-Path $InstallDir 'nebi.exe')"
 
     foreach ($Name in @("nebi-server.exe", "nebi-web.exe")) {
         $Source = Join-Path $ExtractDir $Name
-        if (Test-Path $Source) {
-            Copy-Item -Path $Source -Destination (Join-Path $InstallDir $Name) -Force
-            Write-Info "$Name installed to $(Join-Path $InstallDir $Name)"
-        } elseif ($RequireSplitBins) {
+        if (-not (Test-Path $Source)) {
             Write-Err "$Name not found in $ArchiveName."
         }
+        Copy-Item -Path $Source -Destination (Join-Path $InstallDir $Name) -Force
+        Write-Info "$Name installed to $(Join-Path $InstallDir $Name)"
     }
 
     # Add to PATH if not already present
@@ -116,7 +108,7 @@ try {
     }
 
     # Verify installation
-    $NebiBin = Join-Path $InstallDir "nebi-cli.exe"
+    $NebiBin = Join-Path $InstallDir "nebi.exe"
     if (Test-Path $NebiBin) {
         $InstalledVersion = & $NebiBin version 2>$null
         Write-Info "Installed: $InstalledVersion"
@@ -142,7 +134,7 @@ try {
 
     Write-Info "Installation complete!"
     Write-Host ""
-    Write-Host "To get started, run: nebi-cli --help" -ForegroundColor Green
+    Write-Host "To get started, run: nebi --help" -ForegroundColor Green
     Write-Host "You may need to restart your terminal for PATH changes to take effect." -ForegroundColor Yellow
 
 } finally {

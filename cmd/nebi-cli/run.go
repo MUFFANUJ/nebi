@@ -20,15 +20,15 @@ If multiple workspaces share the same name, an interactive picker is shown.
 A path (with a slash) uses that local directory.
 All arguments are passed through to pixi run.
 
-The --manifest-path flag is managed by nebi-cli; use pixi run directly if you need custom manifest paths.
+The --manifest-path flag is managed by nebi; use pixi run directly if you need custom manifest paths.
 
 Named workspaces run via --manifest-path so you stay in your current directory.
 
 Examples:
-  nebi-cli run my-task                    # run a pixi task in the current directory
-  nebi-cli run data-science my-task       # run a task in a workspace by name (stays in cwd)
-  nebi-cli run ./my-project my-task       # run a task in a local directory
-  nebi-cli run -e dev my-task             # run with a specific pixi environment`,
+  nebi run my-task                    # run a pixi task in the current directory
+  nebi run data-science my-task       # run a task in a workspace by name (stays in cwd)
+  nebi run ./my-project my-task       # run a task in a local directory
+  nebi run -e dev my-task             # run with a specific pixi environment`,
 	DisableFlagParsing: true,
 	RunE:               runRun,
 	ValidArgsFunction:  completeWorkspaceNames,

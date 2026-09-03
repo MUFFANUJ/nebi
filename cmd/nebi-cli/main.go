@@ -13,22 +13,22 @@ var Version = "dev"
 var Commit = ""
 
 var rootCmd = &cobra.Command{
-	Use:   "nebi-cli",
+	Use:   "nebi",
 	Short: "Nebi - Local-first workspace management for Pixi",
 	Long: `Nebi manages Pixi workspaces locally and syncs them to remote servers.
 
 Environment variables:
-  NEBI_AUTH_TOKEN    API token for authentication (bypasses "nebi-cli login")
+  NEBI_AUTH_TOKEN    API token for authentication (bypasses "nebi login")
   NEBI_REMOTE_URL    Remote server URL (paired with NEBI_AUTH_TOKEN)
   NEBI_DATA_DIR      Override the local data directory (default: ~/.local/share/nebi)`,
 	Example: `  # Track a workspace and push it to a server
-  nebi-cli init
-  nebi-cli login https://nebi.company.com
-  nebi-cli push myworkspace:v1.0
+  nebi init
+  nebi login https://nebi.company.com
+  nebi push myworkspace:v1.0
 
   # Compare specs between directories or server versions
-  nebi-cli diff ./project-a ./project-b
-  nebi-cli diff myworkspace:v1 myworkspace:v2`,
+  nebi diff ./project-a ./project-b
+  nebi diff myworkspace:v1 myworkspace:v2`,
 }
 
 func init() {

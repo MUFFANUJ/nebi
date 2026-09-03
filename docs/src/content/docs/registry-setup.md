@@ -24,7 +24,7 @@ GHCR is the easiest option if you already have a GitHub account. Go to GitHub Se
 Then add the registry to Nebi:
 
 ```bash
-nebi-cli registry add \
+nebi registry add \
   --name ghcr \
   --url ghcr.io \
   --namespace your-github-username-or-org \
@@ -35,7 +35,7 @@ nebi-cli registry add \
 The `--namespace` is your username or organization on the registry. It becomes part of the URL: `ghcr.io/<namespace>/<repo-name>`. When prompted for a password, paste the token you created.
 
 :::tip
-Public packages on GHCR are free. Anyone can import them with `nebi-cli import ghcr.io/your-username/my-workspace:v1.0`.
+Public packages on GHCR are free. Anyone can import them with `nebi import ghcr.io/your-username/my-workspace:v1.0`.
 :::
 
 ### Quay.io
@@ -50,7 +50,7 @@ Quay.io is a free container registry by Red Hat. To set it up:
 Then add the registry to Nebi:
 
 ```bash
-nebi-cli registry add \
+nebi registry add \
   --name quay \
   --url quay.io \
   --namespace your-quay-username-or-org \
@@ -67,7 +67,7 @@ Docker Hub is the most widely used container registry. Create a [personal access
 Then add the registry to Nebi:
 
 ```bash
-nebi-cli registry add \
+nebi registry add \
   --name dockerhub \
   --url docker.io \
   --namespace your-dockerhub-username-or-org \
@@ -82,13 +82,13 @@ Replace `your-dockerhub-username` with your Docker Hub username or organization.
 You do not need a Nebi server, an account, or registry credentials to consume a public environment. If someone publishes their workspace to a public OCI namespace, you can pull it directly:
 
 ```bash
-nebi-cli import <registry>/<namespace>/<repo>:<tag>
+nebi import <registry>/<namespace>/<repo>:<tag>
 ```
 
 For example:
 
 ```bash
-nebi-cli import quay.io/nebari_environments/data-science-demo:0.1.0
+nebi import quay.io/nebari_environments/data-science-demo:0.1.0
 ```
 
 This writes `pixi.toml`, `pixi.lock`, and any asset files in the bundle into the current directory, ready to run with `pixi run`.
@@ -97,7 +97,7 @@ This writes `pixi.toml`, `pixi.lock`, and any asset files in the bundle into the
 When a bundle contains asset layers, the output directory must be empty (or not yet exist) to avoid clobbering files you already have. Use `-o ./some-new-dir` to import into a fresh location, for example:
 
 ```bash
-nebi-cli import quay.io/nebari_environments/data-science-demo:0.1.0 -o ./demo
+nebi import quay.io/nebari_environments/data-science-demo:0.1.0 -o ./demo
 ```
 :::
 
