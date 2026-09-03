@@ -9,7 +9,7 @@ import (
 
 // CreateRegistry creates a new local registry record. If no default
 // registry exists yet, the new one is auto-marked default so a lone
-// registry doesn't force the user to re-run 'nebi registry add --default'.
+// registry doesn't force the user to re-run 'nebi-cli registry add --default'.
 func (s *Store) CreateRegistry(reg *LocalRegistry) error {
 	if !reg.IsDefault {
 		var count int64
@@ -45,7 +45,7 @@ func (s *Store) GetRegistryByName(name string) (*LocalRegistry, error) {
 func (s *Store) GetDefaultRegistry() (*LocalRegistry, error) {
 	var reg LocalRegistry
 	if err := s.db.Where("is_default = ?", true).First(&reg).Error; err != nil {
-		return nil, fmt.Errorf("no default registry configured; run 'nebi registry add --default ...' first")
+		return nil, fmt.Errorf("no default registry configured; run 'nebi-cli registry add --default ...' first")
 	}
 	return &reg, nil
 }

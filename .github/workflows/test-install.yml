@@ -38,7 +38,10 @@ jobs:
         if: steps.install.outputs.skipped != 'true'
         run: |
           export PATH="$HOME/.local/bin:$PATH"
+          nebi-cli version
           nebi version
+          if command -v nebi-server >/dev/null 2>&1; then nebi-server --help; fi
+          if command -v nebi-web >/dev/null 2>&1; then nebi-web --help; fi
 
   test-windows:
     runs-on: windows-latest
@@ -57,4 +60,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "$env:RUNNER_TEMP\nebi;$env:PATH"
+          nebi-cli version
           nebi version
+          if (Get-Command nebi-server -ErrorAction SilentlyContinue) { nebi-server --help }
+          if (Get-Command nebi-web -ErrorAction SilentlyContinue) { nebi-web --help }

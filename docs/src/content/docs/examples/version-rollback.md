@@ -30,7 +30,7 @@ Clone the example to follow along with this tutorial:
 ```bash
 git clone https://github.com/nebari-dev/nebi.git
 cd nebi/docs/examples/ml-pipeline
-nebi init
+nebi-cli init
 ```
 
 :::
@@ -79,8 +79,8 @@ Accuracy: 1.00
 Then pushes it to the server as `v1.0`:
 
 ```bash
-nebi login http://localhost:8460
-nebi push ml-pipeline:v1.0
+nebi-cli login http://localhost:8460
+nebi-cli push ml-pipeline:v1.0
 ```
 
 ## Step 2: Push more versions
@@ -91,7 +91,7 @@ Over the next few weeks, Alice updates the environment. Each push creates a new 
 
 ```bash
 pixi add "pandas>=2.2"
-nebi push ml-pipeline:v2.0
+nebi-cli push ml-pipeline:v2.0
 ```
 
 **v3.0** updates the train task to load data from a CSV file instead of the built-in dataset:
@@ -118,14 +118,14 @@ print(f'Accuracy: {accuracy_score(y_test, y_pred):.2f}')
 ```
 
 ```bash
-nebi push ml-pipeline:v3.0
+nebi-cli push ml-pipeline:v3.0
 ```
 
 **v4.0** adds matplotlib for plotting:
 
 ```bash
 pixi add "matplotlib>=3.8"
-nebi push ml-pipeline:v4.0
+nebi-cli push ml-pipeline:v4.0
 ```
 
 ## Step 3: Discover the problem
@@ -145,7 +145,7 @@ The task fails because v3.0 changed it to read from a CSV file that doesn't exis
 To figure out which version introduced the broken task, Alice looks at the version history:
 
 ```bash
-nebi workspace tags ml-pipeline
+nebi-cli workspace tags ml-pipeline
 ```
 
 ```bash title="Output"
@@ -159,7 +159,7 @@ v1.0  2        2026-04-01 03:00
 To narrow it down, Alice compares each pair of consecutive versions:
 
 ```bash
-nebi diff ml-pipeline:v3.0 ml-pipeline:v4.0
+nebi-cli diff ml-pipeline:v3.0 ml-pipeline:v4.0
 ```
 
 ```bash title="Output"
@@ -173,7 +173,7 @@ nebi diff ml-pipeline:v3.0 ml-pipeline:v4.0
 No task changes, just a new package. She checks the previous pair:
 
 ```bash
-nebi diff ml-pipeline:v2.0 ml-pipeline:v3.0
+nebi-cli diff ml-pipeline:v2.0 ml-pipeline:v3.0
 ```
 
 ```bash title="Output"
@@ -192,7 +192,7 @@ There it is. The train task in v3.0 reads from data.csv instead of the built-in 
 Alice rolls back by pulling the last known good version:
 
 ```bash
-nebi pull ml-pipeline:v2.0
+nebi-cli pull ml-pipeline:v2.0
 ```
 
 ```bash title="Output"
@@ -224,7 +224,7 @@ This creates a new version marked as **Current**, with the same content as v2.0:
 The team can now pull the latest version to get the working environment:
 
 ```bash
-nebi pull ml-pipeline
+nebi-cli pull ml-pipeline
 ```
 
 ## What Just Happened
@@ -233,12 +233,12 @@ Here's the full flow at a glance:
 
 | Step                 | Command                                |
 |----------------------|----------------------------------------|
-| Push initial version | `nebi push :v1.0`                      |
-| Push updates         | `nebi push :v2.0`, `:v3.0`, `:v4.0`   |
-| View version history | `nebi workspace tags`                  |
-| Compare versions     | `nebi diff :v2.0 :v4.0`               |
+| Push initial version | `nebi-cli push :v1.0`                      |
+| Push updates         | `nebi-cli push :v2.0`, `:v3.0`, `:v4.0`   |
+| View version history | `nebi-cli workspace tags`                  |
+| Compare versions     | `nebi-cli diff :v2.0 :v4.0`               |
 | Roll back on server  | Nebi UI rollback button                |
-| Pull working version | `nebi pull`                            |
+| Pull working version | `nebi-cli pull`                            |
 
 With nebi, every push is versioned and tagged. Rolling back is one click in the UI.
 

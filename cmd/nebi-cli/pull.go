@@ -31,9 +31,9 @@ in the pulled pixi.toml, not from the server workspace name.
 Use --force to skip the overwrite confirmation prompt.
 
 Examples:
-  nebi pull myworkspace:v1.0
-  nebi pull                                # re-pull from origin
-  nebi pull myworkspace -o ./my-project`,
+  nebi-cli pull myworkspace:v1.0
+  nebi-cli pull                                # re-pull from origin
+  nebi-cli pull myworkspace -o ./my-project`,
 	Args:              cobra.RangeArgs(0, 1),
 	RunE:              runPull,
 	ValidArgsFunction: completeServerWorkspaceRef,
@@ -54,7 +54,7 @@ func runPull(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if origin == nil {
-			return fmt.Errorf("no origin set; specify a workspace: nebi pull <workspace>[:<tag>]")
+			return fmt.Errorf("no origin set; specify a workspace: nebi-cli pull <workspace>[:<tag>]")
 		}
 		wsName = origin.OriginName
 		tag = origin.OriginTag

@@ -38,7 +38,7 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath \
     -ldflags "-s -w -X main.Version=${VERSION}" \
-    -o /nebi ./cmd/nebi
+    -o /nebi-server ./cmd/nebi-server
 
 # Stage 3: Final image with pixi
 FROM ghcr.io/prefix-dev/pixi:latest
@@ -48,7 +48,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates git && rm -rf /var/lib/apt/lists/*
 
 # Copy the static binary
-COPY --from=backend-builder /nebi /app/nebi
+COPY --from=backend-builder /nebi-server /app/nebi-server
 
 # Copy RBAC configuration
 COPY --from=backend-builder /app/internal/rbac/model.conf /app/internal/rbac/model.conf
@@ -60,4 +60,4 @@ EXPOSE 8460
 ENV GIN_MODE=release
 
 # Run the binary
-ENTRYPOINT ["/app/nebi", "serve"]
+ENTRYPOINT ["/app/nebi-server"]

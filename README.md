@@ -53,14 +53,15 @@ Nebi builds on Pixi to add what teams need: version history, rollback, sharing e
 
 ### Install
 
-Pixi is a required Nebi dependency. If not already installed, install pixi as described in the [pixi docs](https://pixi.prefix.dev/latest/installation/). Then use pixi to install Nebi:
+Pixi is a required Nebi dependency. If not already installed, install pixi as described in the [pixi docs](https://pixi.prefix.dev/latest/installation/). Then install Nebi's released command-line binaries:
 
 ```sh
-# Installs CLI + Desktop App (recommended)
-pixi global install nebi
+curl -fsSL https://nebi.nebari.dev/install.sh | sh
 ```
 
-If you only need the CLI or the desktop app individually:
+Add `--desktop` to the installer command to install the desktop app too.
+
+If you prefer conda-forge packages, the currently published Pixi packages are:
 
 ```sh
 # CLI only
@@ -70,26 +71,26 @@ pixi global install nebi-cli
 pixi global install nebi-desktop
 ```
 
+The split `nebi-server` and `nebi-web` conda-forge packages are release prerequisites for this binary split. Until those feedstocks are published, install those binaries from GitHub Releases or from source.
+
 [Alternative installation methods](#alternative-installation-methods) are also available.
 
 ### CLI Quick Start
 
 #### Set up
 
-Start a local Nebi server (set your own admin credentials):
+Start a local Nebi web app:
 
 ```bash
-export ADMIN_USERNAME=admin
-export ADMIN_PASSWORD=your-password
-nebi serve
+nebi-web
 ```
 
-This starts the Nebi server at [http://localhost:8460](http://localhost:8460).
+This starts the local web UI and API at [http://localhost:8460](http://localhost:8460).
 
 In a new terminal, connect the CLI to the server:
 
 ```bash
-nebi login http://localhost:8460
+nebi-cli login http://localhost:8460
 ```
 
 #### Track and push your environment
@@ -98,19 +99,19 @@ Initialize nebi in your project:
 
 ```bash
 cd my-project
-nebi init
+nebi-cli init
 ```
 
 Push your environment to the server:
 
 ```bash
-nebi push myworkspace
+nebi-cli push myworkspace
 ```
 
 Or tag a specific version:
 
 ```bash
-nebi push myworkspace:v1.0
+nebi-cli push myworkspace:v1.0
 ```
 
 Once pushed, your workspace appears on the server dashboard:
@@ -122,13 +123,13 @@ Once pushed, your workspace appears on the server dashboard:
 Pull an environment on another machine:
 
 ```bash
-nebi pull myworkspace:v1.0
+nebi-cli pull myworkspace:v1.0
 ```
 
-Verify what version you're running with `nebi status`:
+Verify what version you're running with `nebi-cli status`:
 
 ```bash
-nebi status
+nebi-cli status
 ```
 
 ```text
@@ -170,12 +171,22 @@ Download pre-built binaries from the [releases page](https://github.com/nebari-d
 ### Build from Source
 
 ```sh
-go install github.com/nebari-dev/nebi/cmd/nebi@latest
+go install github.com/nebari-dev/nebi/cmd/nebi-cli@latest
+go install github.com/nebari-dev/nebi/cmd/nebi-server@latest
+go install github.com/nebari-dev/nebi/cmd/nebi-web@latest
 ```
 
-Requires Go 1.24+.
+Requires Go 1.25+.
+
+From a source checkout, build the desktop app with Wails because it packages the native app wrapper:
+
+```sh
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+make build-desktop
+```
+
+Desktop source builds also require Node.js 20+. On Linux, install GTK/WebKit dependencies first as described in [CONTRIBUTING.md](CONTRIBUTING.md#desktop-app).
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, and project structure.
-

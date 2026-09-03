@@ -85,7 +85,7 @@ Here's how Pixi commands fit into a typical Nebi workflow:
 ```bash
 # 1. Create and track a new workspace
 mkdir my-project && cd my-project
-nebi init
+nebi-cli init
 
 # 2. Activate the environment
 pixi shell
@@ -94,7 +94,7 @@ pixi shell
 pixi add numpy pandas matplotlib
 
 # 4. Push the workspace to your team
-nebi push my-project
+nebi-cli push my-project
 ```
 
 ## Learn More

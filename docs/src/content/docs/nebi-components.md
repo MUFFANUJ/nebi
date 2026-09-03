@@ -2,7 +2,7 @@
 title: "Nebi components"
 ---
 
-It has three components: a **CLI**, a **desktop app**, and a **team server**. All share the same core libraries but serve different use cases.
+It has four executables: **nebi-cli**, **nebi-server**, **nebi-web**, and **nebi-desktop**. They share the same core libraries but serve different use cases.
 
 ## System overview
 
@@ -10,7 +10,7 @@ It has three components: a **CLI**, a **desktop app**, and a **team server**. Al
 
 ## CLI
 
-The CLI is a standalone tool for managing and tracking Pixi workspaces on your local machines, both for [solo use](/cli-local/) and for [team workflows](/cli-team/) backed by a Nebi server. Every command is documented in the [CLI reference](/cli-reference/).
+`nebi-cli` is a standalone tool for managing and tracking Pixi workspaces on your local machines, both for [solo use](/cli-local/) and for [team workflows](/cli-team/) backed by a Nebi server. Every command is documented in the [CLI reference](/cli-reference/).
 
 - **Local database**: Track workspace names, paths, and versions in a local database
 - **Pixi shell/run**: Open a pixi shell or run pixi tasks by workspace name
@@ -26,14 +26,14 @@ The [desktop app](/ui/) is another tool for managing Pixi workspaces on your loc
 
 Nebi can publish **workspace bundles** to any [OCI-compliant registry](/registry-setup/) such as GitHub Container Registry, Quay.io, or self-hosted registries. A bundle always contains `pixi.toml` and `pixi.lock`, and may also include other project files (READMEs, source code, data).
 
-- Publishing can be done from the CLI (`nebi publish`) or triggered from the desktop app or server
+- Publishing can be done from the CLI (`nebi-cli publish`) or triggered from the desktop app or server
 - The desktop app and server UI include a registry browser for discovering and pulling published bundles
 
 Bundles are packed into an OCI Image Manifest with custom media types for the spec and for each asset layer. Each push creates a content-addressed tag (`sha-<hash>`) plus a `latest` tag and any user-specified tags.
 
 ## Nebi Server
 
-The [Nebi server](/server-setup/) is the team deployment of Nebi. It runs the desktop app interface but in a **server and team mode** with full multi-user support.
+`nebi-server` is the team deployment of Nebi. It serves the REST API, bundled React frontend, and worker stack with full multi-user support.
 
 - **Authentication**: JWT-based sessions with pluggable backends — basic auth, OIDC, or proxy auth
 - **Role-based AC**: Apache Casbin-based access control with per-workspace permissions (read, write, admin) for users
@@ -43,3 +43,7 @@ The [Nebi server](/server-setup/) is the team deployment of Nebi. It runs the de
 - **Job queue**: In-memory queue (single instance) or Valkey (distributed deployments) to process workspace creation and updating requests.
 
 Learn more: [Nebi server setup](/server-setup/).
+
+## Local web app
+
+`nebi-web` serves the bundled React frontend for a single-user local workflow. It uses local authentication bypass and binds to loopback by default.

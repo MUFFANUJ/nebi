@@ -40,7 +40,7 @@ func getAuthenticatedClient() (*cliclient.Client, error) {
 		return nil, fmt.Errorf("loading server URL: %w", err)
 	}
 	if serverURL == "" {
-		return nil, fmt.Errorf("no server configured; run 'nebi login <server-url>' first")
+		return nil, fmt.Errorf("no server configured; run 'nebi-cli login <server-url>' first")
 	}
 
 	creds, err := s.LoadCredentials()
@@ -48,7 +48,7 @@ func getAuthenticatedClient() (*cliclient.Client, error) {
 		return nil, fmt.Errorf("loading credentials: %w", err)
 	}
 	if creds.Token == "" {
-		return nil, fmt.Errorf("not logged in; run 'nebi login <server-url>' first")
+		return nil, fmt.Errorf("not logged in; run 'nebi-cli login <server-url>' first")
 	}
 
 	return cliclient.New(serverURL, creds.Token), nil

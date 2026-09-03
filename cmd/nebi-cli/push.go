@@ -32,11 +32,11 @@ If the content hasn't changed since the last push, the version is deduplicated.
 If the workspace name is omitted, the name from the last push/pull origin is used.
 
 Examples:
-  nebi push myworkspace                    # auto-tag with content hash + latest
-  nebi push myworkspace:v1.0               # also add user tag v1.0
-  nebi push                                # reuse workspace name from origin
-  nebi push :v2.0                          # reuse workspace name, add tag v2.0
-  nebi push myworkspace:v2.0 --force       # overwrite existing user tag`,
+  nebi-cli push myworkspace                    # auto-tag with content hash + latest
+  nebi-cli push myworkspace:v1.0               # also add user tag v1.0
+  nebi-cli push                                # reuse workspace name from origin
+  nebi-cli push :v2.0                          # reuse workspace name, add tag v2.0
+  nebi-cli push myworkspace:v2.0 --force       # overwrite existing user tag`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runPush,
 	// No completion - workspace name is user-provided, not selected from existing
@@ -60,7 +60,7 @@ func runPush(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if origin == nil {
-			return fmt.Errorf("no origin set; specify a workspace name: nebi push <workspace>[:<tag>]")
+			return fmt.Errorf("no origin set; specify a workspace name: nebi-cli push <workspace>[:<tag>]")
 		}
 		wsName = origin.OriginName
 		fmt.Fprintf(os.Stderr, "Using workspace %q from origin\n", wsName)

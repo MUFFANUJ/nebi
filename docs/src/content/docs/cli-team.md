@@ -13,7 +13,7 @@ If you don't have a server for your team or organization yet, see [Server Setup]
 Before syncing workspaces, connect and authenticate with your Nebi server. You only need to do this once per server.
 
 ```bash
-$ nebi login https://nebi.company.com
+$ nebi-cli login https://nebi.company.com
 Username: alice
 Password: ********
 Logged in to "https://nebi.company.com" as alice
@@ -31,19 +31,19 @@ Every push automatically creates a **content-addressed tag** (`sha-<hash>`) and 
 
 ```bash
 # Push (auto-tags with content hash + latest)
-$ nebi push my-project
+$ nebi-cli push my-project
 Pushed my-project (version 1, tags: sha-a1b2c3d4e5f6, latest)
 
 # Push with an explicit user tag
-$ nebi push my-project:v1.0
+$ nebi-cli push my-project:v1.0
 Pushed my-project (version 1, tags: sha-a1b2c3d4e5f6, latest, v1.0)
 
 # Push again without changes (deduplicated)
-$ nebi push my-project
+$ nebi-cli push my-project
 Content unchanged — my-project (version 1, tags: sha-a1b2c3d4e5f6, latest)
 
 # After the first push, you can omit the workspace name
-$ nebi push :dev
+$ nebi-cli push :dev
 ```
 
 ### Pull
@@ -52,24 +52,24 @@ $ nebi push :dev
 
 ```bash
 # Pull into the current directory
-$ nebi pull my-project:v1.0
+$ nebi-cli pull my-project:v1.0
 Pulled my-project:v1.0
 
 # Pull into a specific directory
-$ nebi pull my-project:v1.0 -o ./reproduced-env
+$ nebi-cli pull my-project:v1.0 -o ./reproduced-env
 ```
 
 After pulling, the workspace is automatically tracked by Nebi. Future pulls can omit the workspace name:
 
 ```bash
 # Re-pull the same workspace with just:
-$ nebi pull
+$ nebi-cli pull
 ```
 
 ## Browse Remote Workspaces
 
 ```bash
-$ nebi workspace list --remote
+$ nebi-cli workspace list --remote
 NAME             STATUS  OWNER  UPDATED
 my-data-project  ready   alice  2024-01-15 14:22
 ml-pipeline      ready   alice  2024-01-14 10:30
@@ -79,7 +79,7 @@ shared-env       ready   bob    2024-01-13 09:15
 View available tags for a workspace:
 
 ```bash
-$ nebi workspace tags my-data-project
+$ nebi-cli workspace tags my-data-project
 TAG               VERSION  CREATED           UPDATED
 prod              2        2024-01-15 14:22
 latest            2        2024-01-15 10:30  2024-01-15 14:22
@@ -90,10 +90,10 @@ sha-a1b2c3d4e5f6  1        2024-01-15 10:30
 
 ## Remove a Remote Workspace
 
-By default, `nebi workspace remove` only removes the local tracking entry (your project files are untouched). To delete a workspace from the server, use the `--remote` flag:
+By default, `nebi-cli workspace remove` only removes the local tracking entry (your project files are untouched). To delete a workspace from the server, use the `--remote` flag:
 
 ```bash
-nebi workspace remove my-workspace --remote
+nebi-cli workspace remove my-workspace --remote
 ```
 
 ## Diff and Status
@@ -103,7 +103,7 @@ nebi workspace remove my-workspace --remote
 See if your local workspace has diverged from the server:
 
 ```bash
-$ nebi status
+$ nebi-cli status
 Workspace: my-data-project
 Path:      /home/user/my-data-project
 Server:    https://nebi.company.com
@@ -118,19 +118,19 @@ Origin:
 
 ```bash
 # Compare local workspace against its server origin
-$ nebi diff
+$ nebi-cli diff
 
 # Compare two server versions
-$ nebi diff my-project:v1.0 my-project:v2.0
+$ nebi-cli diff my-project:v1.0 my-project:v2.0
 
 # Compare two local directories
-$ nebi diff ./project-a ./project-b
+$ nebi-cli diff ./project-a ./project-b
 
 # Compare a local directory against a server version
-$ nebi diff ./my-project my-project:v1.0
+$ nebi-cli diff ./my-project my-project:v1.0
 
 # Include lock file changes
-$ nebi diff --lock
+$ nebi-cli diff --lock
 ```
 
 ### Registry Setup
@@ -140,7 +140,7 @@ Before publishing, you need to configure an OCI registry with credentials. See [
 Once you have your credentials, add the registry to Nebi:
 
 ```bash
-nebi registry add \
+nebi-cli registry add \
   --name <registry-name> \
   --url <registry-url> \
   --namespace <namespace> \
@@ -154,13 +154,13 @@ When prompted for a password, paste your registry token.
 
 ```bash
 # List all configured registries
-$ nebi registry list
+$ nebi-cli registry list
 
 # Remove a registry
-$ nebi registry remove <name>
+$ nebi-cli registry remove <name>
 
 # Publish to a specific registry (instead of the default)
-$ nebi publish my-workspace --registry ghcr --tag v1.0
+$ nebi-cli publish my-workspace --registry ghcr --tag v1.0
 ```
 
 ### Publish to an OCI Registry
@@ -171,14 +171,14 @@ By default, the content hash tag is used as the primary OCI tag, and a `latest` 
 
 ```bash
 # Typical workflow: push local changes, then publish to OCI
-$ nebi push my-project
+$ nebi-cli push my-project
 Pushed my-project (version 2, tags: sha-f8426b81dfed, latest)
-$ nebi publish my-project
+$ nebi-cli publish my-project
 Published my-project-8b3fd00c:sha-f8426b81dfed
 
 # Publish with a custom OCI tag
-$ nebi publish my-project --tag v1.0.0
+$ nebi-cli publish my-project --tag v1.0.0
 
 # Publish to a specific registry and repository
-$ nebi publish my-project --registry ghcr --repo myorg/myenv
+$ nebi-cli publish my-project --registry ghcr --repo myorg/myenv
 ```

@@ -32,10 +32,10 @@ The tag auto-increments (v1, v2, v3, ...) based on existing publications.
 If --registry is not specified, the server's default registry is used.
 
 Examples:
-  nebi publish                                       # publish current directory workspace
-  nebi publish myworkspace
-  nebi publish myworkspace --tag v1.0.0
-  nebi publish myworkspace --repo custom-name --registry ghcr`,
+  nebi-cli publish                                       # publish current directory workspace
+  nebi-cli publish myworkspace
+  nebi-cli publish myworkspace --tag v1.0.0
+  nebi-cli publish myworkspace --repo custom-name --registry ghcr`,
 	Args:              cobra.MaximumNArgs(1),
 	RunE:              runWorkspacePublish,
 	ValidArgsFunction: completeServerWorkspaceNames,
@@ -66,7 +66,7 @@ func runPublishServer(args []string) error {
 			return err
 		}
 		if origin == nil {
-			return fmt.Errorf("no workspace specified and no origin set in current directory;\nusage: nebi publish [workspace]")
+			return fmt.Errorf("no workspace specified and no origin set in current directory;\nusage: nebi-cli publish [workspace]")
 		}
 		wsName = origin.OriginName
 		fmt.Fprintf(os.Stderr, "Using workspace %q from origin\n", wsName)
@@ -142,7 +142,7 @@ func runPublishLocal(args []string) error {
 			return err
 		}
 		if ws == nil {
-			return fmt.Errorf("workspace %q not found in local store; run 'nebi init' in the workspace directory first", args[0])
+			return fmt.Errorf("workspace %q not found in local store; run 'nebi-cli init' in the workspace directory first", args[0])
 		}
 	} else {
 		cwd, err := os.Getwd()
@@ -154,7 +154,7 @@ func runPublishLocal(args []string) error {
 			return err
 		}
 		if ws == nil {
-			return fmt.Errorf("current directory is not a tracked workspace; run 'nebi init' first")
+			return fmt.Errorf("current directory is not a tracked workspace; run 'nebi-cli init' first")
 		}
 		fmt.Fprintf(os.Stderr, "Using workspace %q\n", ws.Name)
 	}
@@ -190,7 +190,7 @@ func runPublishLocal(args []string) error {
 	cs := store.NewCredentialStore(s.DataDir())
 	password, err := cs.GetPassword(reg.Name)
 	if err != nil && reg.Username != "" {
-		return fmt.Errorf("no credentials found for registry %q; re-add with 'nebi registry add --local'", reg.Name)
+		return fmt.Errorf("no credentials found for registry %q; re-add with 'nebi-cli registry add --local'", reg.Name)
 	}
 
 	// Compute defaults. The tag is content-addressed across the full

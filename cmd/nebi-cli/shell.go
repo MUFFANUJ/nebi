@@ -25,15 +25,15 @@ If multiple workspaces share the same name, an interactive picker is shown.
 A path (with a slash) uses that local directory.
 All arguments are passed through to pixi shell.
 
-The --manifest-path flag is managed by nebi; use pixi shell directly if you need custom manifest paths.
+The --manifest-path flag is managed by nebi-cli; use pixi shell directly if you need custom manifest paths.
 
 Named workspaces activate via --manifest-path so you stay in your current directory.
 
 Examples:
-  nebi shell                       # shell in current directory
-  nebi shell data-science          # activate a workspace by name (stays in cwd)
-  nebi shell ./my-project          # shell into a local directory
-  nebi shell data-science -e dev   # activate with a specific pixi environment`,
+  nebi-cli shell                       # shell in current directory
+  nebi-cli shell data-science          # activate a workspace by name (stays in cwd)
+  nebi-cli shell ./my-project          # shell into a local directory
+  nebi-cli shell data-science -e dev   # activate with a specific pixi environment`,
 	DisableFlagParsing: true,
 	RunE:               runShell,
 	ValidArgsFunction:  completeWorkspaceNames,
@@ -178,7 +178,7 @@ func pickWorkspace(workspaces []store.LocalWorkspace, name string) (*store.Local
 func rejectManifestPath(args []string, cmdName string) error {
 	for _, a := range args {
 		if a == "--manifest-path" || strings.HasPrefix(a, "--manifest-path=") {
-			return fmt.Errorf("--manifest-path cannot be used with nebi %s; use pixi %s directly", cmdName, cmdName)
+			return fmt.Errorf("--manifest-path cannot be used with nebi-cli %s; use pixi %s directly", cmdName, cmdName)
 		}
 	}
 	return nil

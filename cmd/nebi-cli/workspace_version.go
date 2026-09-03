@@ -33,9 +33,9 @@ var workspaceVersionListCmd = &cobra.Command{
 If no workspace name is given, the current directory's tracked workspace is used.
 
 Examples:
-  nebi workspace version list                  # current directory, local
-  nebi workspace version list myws             # by name, local
-  nebi workspace version list myws --remote    # by name, server`,
+  nebi-cli workspace version list                  # current directory, local
+  nebi-cli workspace version list myws             # by name, local
+  nebi-cli workspace version list myws --remote    # by name, server`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkspaceVersionList,
 }
@@ -48,9 +48,9 @@ var workspaceVersionShowCmd = &cobra.Command{
 If no workspace name is given, the current directory's tracked workspace is used.
 
 Examples:
-  nebi workspace version show 5                # current directory, local
-  nebi workspace version show 5 myws           # by name, local
-  nebi workspace version show 5 myws --remote  # by name, server`,
+  nebi-cli workspace version show 5                # current directory, local
+  nebi-cli workspace version show 5 myws           # by name, local
+  nebi-cli workspace version show 5 myws --remote  # by name, server`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: runWorkspaceVersionShow,
 }
@@ -65,12 +65,12 @@ If no workspace name is given, the current directory's tracked workspace is used
 If the content is unchanged since the most recent snapshot, the existing
 version is returned and no new record is created.
 
-Server-side versions are created by 'nebi push', not by this command.
+Server-side versions are created by 'nebi-cli push', not by this command.
 
 Examples:
-  nebi workspace version create
-  nebi workspace version create -m "Pinned numpy to 2.1"
-  nebi workspace version create myws`,
+  nebi-cli workspace version create
+  nebi-cli workspace version create -m "Pinned numpy to 2.1"
+  nebi-cli workspace version create myws`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkspaceVersionCreate,
 }
@@ -86,9 +86,9 @@ run it yourself afterwards to apply the change. In remote mode the rollback
 is queued as a job on the server, which runs pixi install automatically.
 
 Examples:
-  nebi workspace version rollback 5                # current directory, local
-  nebi workspace version rollback 5 myws           # by name, local
-  nebi workspace version rollback 5 myws --remote  # by name, server`,
+  nebi-cli workspace version rollback 5                # current directory, local
+  nebi-cli workspace version rollback 5 myws           # by name, local
+  nebi-cli workspace version rollback 5 myws --remote  # by name, server`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: runWorkspaceVersionRollback,
 }
@@ -100,7 +100,7 @@ func init() {
 	workspaceVersionShowCmd.Flags().BoolVarP(&wsVersionRemote, "remote", "r", false, "Operate on the server instead of the local store")
 	workspaceVersionShowCmd.Flags().BoolVar(&wsVersionJSON, "json", false, "Output as JSON")
 
-	workspaceVersionCreateCmd.Flags().BoolVarP(&wsVersionRemote, "remote", "r", false, "(unsupported — use 'nebi push' to create versions on the server)")
+	workspaceVersionCreateCmd.Flags().BoolVarP(&wsVersionRemote, "remote", "r", false, "(unsupported — use 'nebi-cli push' to create versions on the server)")
 	workspaceVersionCreateCmd.Flags().StringVarP(&wsVersionCreateMsg, "message", "m", "", "Description for the snapshot")
 
 	workspaceVersionRollbackCmd.Flags().BoolVarP(&wsVersionRemote, "remote", "r", false, "Operate on the server instead of the local store")
@@ -122,7 +122,7 @@ func resolveLocalWorkspace(s *store.Store, name string) (*store.LocalWorkspace, 
 			return nil, err
 		}
 		if ws == nil {
-			return nil, fmt.Errorf("workspace %q not tracked locally; run 'nebi init' first", name)
+			return nil, fmt.Errorf("workspace %q not tracked locally; run 'nebi-cli init' first", name)
 		}
 		return ws, nil
 	}
@@ -135,7 +135,7 @@ func resolveLocalWorkspace(s *store.Store, name string) (*store.LocalWorkspace, 
 		return nil, err
 	}
 	if ws == nil {
-		return nil, fmt.Errorf("no tracked workspace in %s; run 'nebi init' first", cwd)
+		return nil, fmt.Errorf("no tracked workspace in %s; run 'nebi-cli init' first", cwd)
 	}
 	return ws, nil
 }
@@ -359,7 +359,7 @@ func printVersion(wsName string, versionNum int, hash, description, createdAt, m
 
 func runWorkspaceVersionCreate(cmd *cobra.Command, args []string) error {
 	if wsVersionRemote {
-		return fmt.Errorf("--remote not supported for create; use 'nebi push' to create versions on the server")
+		return fmt.Errorf("--remote not supported for create; use 'nebi-cli push' to create versions on the server")
 	}
 
 	var name string

@@ -38,16 +38,16 @@ var loginCmd = &cobra.Command{
 
 Examples:
   # Default: device flow via Keycloak (opens browser, works with proxy)
-  nebi login https://nebi.company.com
+  nebi-cli login https://nebi.company.com
 
   # Username/password login
-  nebi login https://nebi.company.com --username myuser
+  nebi-cli login https://nebi.company.com --username myuser
 
   # Non-interactive with password from stdin
-  echo "$PASSWORD" | nebi login https://nebi.company.com --username myuser --password-stdin
+  echo "$PASSWORD" | nebi-cli login https://nebi.company.com --username myuser --password-stdin
 
   # Using an API token (skips interactive login)
-  nebi login https://nebi.company.com --token <api-token>`,
+  nebi-cli login https://nebi.company.com --token <api-token>`,
 	Args: cobra.ExactArgs(1),
 	RunE: runLogin,
 }

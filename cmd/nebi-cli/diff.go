@@ -30,13 +30,13 @@ pushed/pulled origin.
 If only one ref is given, it is compared against the current directory.
 
 Examples:
-  nebi diff                                    # local vs origin
-  nebi diff ./other-project                    # other dir vs cwd
-  nebi diff ./project-a ./project-b            # two local dirs
-  nebi diff data-science                       # tracked workspace vs cwd
-  nebi diff myworkspace:v1                     # server version vs cwd
-  nebi diff myworkspace:v1 myworkspace:v2      # two server versions
-  nebi diff myworkspace:v1 ./local-dir         # server vs local dir
+  nebi-cli diff                                    # local vs origin
+  nebi-cli diff ./other-project                    # other dir vs cwd
+  nebi-cli diff ./project-a ./project-b            # two local dirs
+  nebi-cli diff data-science                       # tracked workspace vs cwd
+  nebi-cli diff myworkspace:v1                     # server version vs cwd
+  nebi-cli diff myworkspace:v1 myworkspace:v2      # two server versions
+  nebi-cli diff myworkspace:v1 ./local-dir         # server vs local dir
 
 Use --lock to also compare pixi.lock files.`,
 	Args:              cobra.RangeArgs(0, 2),
@@ -66,7 +66,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if origin == nil {
-			return fmt.Errorf("no origin set; use 'nebi diff <ref>' or push/pull first")
+			return fmt.Errorf("no origin set; use 'nebi-cli diff <ref>' or push/pull first")
 		}
 		refA = origin.OriginName + ":" + origin.OriginTag
 		refB = "."

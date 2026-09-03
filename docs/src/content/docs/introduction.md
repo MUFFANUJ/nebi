@@ -83,14 +83,14 @@ Nebi lets you push snapshots, compare what changed between versions, and roll ba
 
 ```bash
 # Push a snapshot of your current environment
-nebi push geo-ml:v1.0
+nebi-cli push geo-ml:v1.0
 
 # Later, after adding packages...
-nebi push geo-ml:v2.0
-nebi diff geo-ml:v1.0 geo-ml:v2.0
+nebi-cli push geo-ml:v2.0
+nebi-cli diff geo-ml:v1.0 geo-ml:v2.0
 
 # Something broke? Roll back.
-nebi pull geo-ml:v1.0
+nebi-cli pull geo-ml:v1.0
 pixi install
 ```
 
@@ -100,10 +100,10 @@ Instead of sharing environments through git repos, Nebi publishes them to an OCI
 
 ```bash
 # Publish to an OCI registry
-nebi publish my-project --tag v1.0.0
+nebi-cli publish my-project --tag v1.0.0
 
 # A colleague on another machine:
-nebi import quay.io/nebari/data-science:v1.0 -o ./my-project
+nebi-cli import quay.io/nebari/data-science:v1.0 -o ./my-project
 ```
 
 ### Control who can modify production dependencies
@@ -123,10 +123,10 @@ Nebi lets you activate any tracked workspace by name from anywhere:
 
 ```bash
 cd ~/projects/analysis
-nebi shell geo-ml       # no need to cd back
+nebi-cli shell geo-ml       # no need to cd back
 
 cd ~/projects/dashboard
-nebi shell geo-ml       # same environment, any directory
+nebi-cli shell geo-ml       # same environment, any directory
 ```
 
 ## How Does It Compare?

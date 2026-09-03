@@ -33,8 +33,8 @@ The local workspace name is derived from the [workspace] name field
 in the imported pixi.toml.
 
 Examples:
-  nebi import quay.io/nebari/my-env:v1
-  nebi import ghcr.io/myorg/data-science:latest -o ./my-project`,
+  nebi-cli import quay.io/nebari/my-env:v1
+  nebi-cli import ghcr.io/myorg/data-science:latest -o ./my-project`,
 	Args: cobra.ExactArgs(1),
 	RunE: runImport,
 }

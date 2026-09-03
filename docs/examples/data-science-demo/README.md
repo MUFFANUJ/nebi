@@ -9,7 +9,7 @@ A sample Pixi environment used in the [Share and Reuse Environments](../../docs/
 ## Quick start
 
 ```bash
-nebi init
+nebi-cli init
 pixi run train
 ```
 

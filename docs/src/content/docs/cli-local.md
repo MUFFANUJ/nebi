@@ -12,7 +12,7 @@ Create a new Pixi workspace and start tracking it with Nebi:
 
 ```bash
 mkdir my-data-project && cd my-data-project
-nebi init
+nebi-cli init
 ```
 
 If no `pixi.toml` exists, Nebi automatically runs `pixi init` for you.
@@ -27,11 +27,11 @@ Workspace 'my-data-project' initialized (/home/user/my-data-project)
 
 ## Track an Existing Pixi Workspace
 
-Already have a Pixi project? Just run `nebi init` in the directory:
+Already have a Pixi project? Just run `nebi-cli init` in the directory:
 
 ```bash
 cd existing-pixi-project
-nebi init
+nebi-cli init
 ```
 
 ```bash title="Output"
@@ -47,7 +47,7 @@ If you rename a workspace in `pixi.toml` (by changing the `[workspace] name` fie
 See all workspaces tracked by Nebi:
 
 ```bash
-nebi workspace list
+nebi-cli workspace list
 ```
 
 ```bash title="Output"
@@ -65,10 +65,10 @@ Tracked workspaces can be activated from any directory by name or by path
 
 ```bash
 # Activate a Pixi shell with the workspace's name
-nebi shell data-science
+nebi-cli shell data-science
 
 # Run a (Pixi) task from a workspace (stays in current directory)
-nebi run data-science jupyter-lab
+nebi-cli run data-science jupyter-lab
 ```
 
 If multiple workspaces share the same name, an interactive picker is shown.
@@ -77,10 +77,10 @@ If multiple workspaces share the same name, an interactive picker is shown.
 
 ```bash
 # Activate a workspace by relative path
-nebi shell ./my-project
+nebi-cli shell ./my-project
 
 # Or, by absolute path
-nebi shell /home/user/data-science
+nebi-cli shell /home/user/data-science
 ```
 
 ### Pass Arguments to Pixi
@@ -89,20 +89,20 @@ Anything after the workspace name is forwarded to Pixi:
 
 ```bash
 # Activate a specific pixi environment
-nebi shell data-science -e cuda
+nebi-cli shell data-science -e cuda
 
 # Run a task with extra arguments
-nebi run ml-pipeline train -- --epochs 100
+nebi-cli run ml-pipeline train -- --epochs 100
 ```
 
 ## Publish a Workspace Bundle
 
-`nebi publish` packages your workspace and pushes it to an OCI registry.
+`nebi-cli publish` packages your workspace and pushes it to an OCI registry.
 Every bundle includes `pixi.toml` and `pixi.lock`, plus any other
 workspace files (READMEs, source code, data) as additional layers.
 
 ```bash
-nebi publish --registry my-registry --tag v1
+nebi-cli publish --registry my-registry --tag v1
 ```
 
 ### Selecting what goes into the bundle
@@ -141,7 +141,7 @@ Pull a workspace bundle from an OCI registry. The core files (`pixi.toml`,
 extracted to the output directory at their original relative paths.
 
 ```bash
-nebi import quay.io/nebari/data-science:v1.0 -o ./my-project
+nebi-cli import quay.io/nebari/data-science:v1.0 -o ./my-project
 ```
 
 ```bash title="Output"
@@ -152,7 +152,7 @@ Imported quay.io/nebari/data-science:v1.0 -> /home/user/my-project (3 asset file
 Use `--concurrency N` to set how many files download at the same time (default 8).
 
 :::note Imports do not overwrite existing files
-If the bundle includes asset files, `nebi import` refuses to write
+If the bundle includes asset files, `nebi-cli import` refuses to write
 into a non-empty output directory. Use `-o ./some-new-dir` to land
 it in a fresh folder.
 
@@ -166,24 +166,24 @@ To stop tracking a workspace (without deleting any files):
 
 ```bash
 # Remove the workspace in the current directory
-nebi workspace remove .
+nebi-cli workspace remove .
 
 # Remove by name
-nebi workspace remove data-science
+nebi-cli workspace remove data-science
 
 # Remove by path
-nebi workspace remove /home/user/data-science
+nebi-cli workspace remove /home/user/data-science
 ```
 
 :::note
 This only removes the local tracking entry. Your project files are untouched. To delete a workspace from the server, use `--remote`:
 ```bash
-nebi workspace remove my-workspace --remote
+nebi-cli workspace remove my-workspace --remote
 ```
 :::
 
 To clean up all workspaces whose directories no longer exist:
 
 ```bash
-nebi workspace prune
+nebi-cli workspace prune
 ```

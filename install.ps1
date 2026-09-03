@@ -59,7 +59,7 @@ try {
     # Create temp directory
     New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 
-    # Download CLI
+    # Download command-line binaries
     $ArchiveName = "nebi_${VersionNum}_windows_${ArchName}.zip"
     $DownloadUrl = "https://github.com/$Repo/releases/download/$Version/$ArchiveName"
 
@@ -78,14 +78,34 @@ try {
     $ExtractDir = Join-Path $TempDir "extracted"
     Expand-Archive -Path $ArchivePath -DestinationPath $ExtractDir -Force
 
-    # Install binary
     if (-not (Test-Path $InstallDir)) {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     }
 
-    Copy-Item -Path (Join-Path $ExtractDir "nebi.exe") -Destination (Join-Path $InstallDir "nebi.exe") -Force
+    $CliSource = Join-Path $ExtractDir "nebi-cli.exe"
+    $RequireSplitBins = $true
+    if (-not (Test-Path $CliSource)) {
+        $CliSource = Join-Path $ExtractDir "nebi.exe"
+        $RequireSplitBins = $false
+    }
+    if (-not (Test-Path $CliSource)) {
+        Write-Err "nebi-cli.exe not found in $ArchiveName."
+    }
 
-    Write-Info "nebi installed to $(Join-Path $InstallDir 'nebi.exe')"
+    Copy-Item -Path $CliSource -Destination (Join-Path $InstallDir "nebi-cli.exe") -Force
+    Copy-Item -Path $CliSource -Destination (Join-Path $InstallDir "nebi.exe") -Force
+    Write-Info "nebi-cli installed to $(Join-Path $InstallDir 'nebi-cli.exe')"
+    Write-Info "Compatibility command installed to $(Join-Path $InstallDir 'nebi.exe')"
+
+    foreach ($Name in @("nebi-server.exe", "nebi-web.exe")) {
+        $Source = Join-Path $ExtractDir $Name
+        if (Test-Path $Source) {
+            Copy-Item -Path $Source -Destination (Join-Path $InstallDir $Name) -Force
+            Write-Info "$Name installed to $(Join-Path $InstallDir $Name)"
+        } elseif ($RequireSplitBins) {
+            Write-Err "$Name not found in $ArchiveName."
+        }
+    }
 
     # Add to PATH if not already present
     $UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
@@ -96,7 +116,7 @@ try {
     }
 
     # Verify installation
-    $NebiBin = Join-Path $InstallDir "nebi.exe"
+    $NebiBin = Join-Path $InstallDir "nebi-cli.exe"
     if (Test-Path $NebiBin) {
         $InstalledVersion = & $NebiBin version 2>$null
         Write-Info "Installed: $InstalledVersion"
@@ -113,7 +133,7 @@ try {
             New-Item -ItemType Directory -Path $DesktopDir -Force | Out-Null
         }
 
-        $DesktopPath = Join-Path $DesktopDir "Nebi.exe"
+        $DesktopPath = Join-Path $DesktopDir "nebi-desktop.exe"
         Write-Info "Downloading $DesktopExe..."
         Invoke-WebRequest -Uri $DesktopUrl -OutFile $DesktopPath -UseBasicParsing
 
@@ -122,7 +142,7 @@ try {
 
     Write-Info "Installation complete!"
     Write-Host ""
-    Write-Host "To get started, run: nebi --help" -ForegroundColor Green
+    Write-Host "To get started, run: nebi-cli --help" -ForegroundColor Green
     Write-Host "You may need to restart your terminal for PATH changes to take effect." -ForegroundColor Yellow
 
 } finally {
