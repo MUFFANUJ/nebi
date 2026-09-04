@@ -277,7 +277,28 @@ func TestPullBundle_RejectsOversizedManifestBody(t *testing.T) {
 	}
 }
 
-func TestPullBundle_RejectsCoreLayerDeclaredAboveCap(t *testing.T) {
+func TestIsNebiRepository_RejectsOversizedManifestBody(t *testing.T) {
+	host := startTestRegistry(t)
+	src := t.TempDir()
+	writeFile(t, src, "pixi.toml", "[workspace]\nname = \"x\"\n")
+	writeFile(t, src, "pixi.lock", "version: 6\n")
+
+	res, err := Publish(context.Background(), src, testRegistry(host, "demo"), "filter", "v1")
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+
+	shimHost := startManifestRewritingRegistry(t, host, func(body []byte) ([]byte, error) {
+		return append(body, []byte(strings.Repeat("X", int(maxManifestBytes)+1))...), nil
+	})
+	repoRef := strings.Replace(res.Repository, host, shimHost, 1)
+
+	if IsNebiRepository(context.Background(), repoRef, BrowseOptions{}) {
+		t.Fatal("expected oversized manifest to be rejected by repository filter")
+	}
+}
+
+func TestBundleReads_RejectCoreLayerDeclaredAboveCap(t *testing.T) {
 	host := startTestRegistry(t)
 	src := t.TempDir()
 	writeFile(t, src, "pixi.toml", "[workspace]\nname = \"x\"\n")
@@ -308,6 +329,48 @@ func TestPullBundle_RejectsCoreLayerDeclaredAboveCap(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "pixi.lock layer size 16777217 bytes exceeds cap 16777216 bytes") {
 		t.Fatalf("expected pixi.lock cap error, got: %v", err)
+	}
+
+	_, err = ExtractBundle(context.Background(), repoRef, "v1", t.TempDir(), PullOptions{PlainHTTP: true})
+	if err == nil {
+		t.Fatalf("expected extract to reject oversized core layer, got nil")
+	}
+	if !strings.Contains(err.Error(), "pixi.lock layer size 16777217 bytes exceeds cap 16777216 bytes") {
+		t.Fatalf("expected pixi.lock cap error from extract, got: %v", err)
+	}
+}
+
+func TestBundleReads_RejectNegativeCoreLayerSize(t *testing.T) {
+	host := startTestRegistry(t)
+	src := t.TempDir()
+	writeFile(t, src, "pixi.toml", "[workspace]\nname = \"x\"\n")
+	writeFile(t, src, "pixi.lock", "version: 6\n")
+
+	res, err := Publish(context.Background(), src, testRegistry(host, "demo"), "negativecore", "v1")
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+
+	shimHost := startManifestRewritingRegistry(t, host, func(body []byte) ([]byte, error) {
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(body, &manifest); err != nil {
+			return nil, err
+		}
+		for i := range manifest.Layers {
+			if manifest.Layers[i].MediaType == MediaTypePixiLock {
+				manifest.Layers[i].Size = -1
+			}
+		}
+		return json.Marshal(manifest)
+	})
+	repoRef := strings.Replace(res.Repository, host, shimHost, 1)
+
+	_, err = ExtractBundle(context.Background(), repoRef, "v1", t.TempDir(), PullOptions{PlainHTTP: true})
+	if err == nil {
+		t.Fatalf("expected negative core layer size rejection, got nil")
+	}
+	if !strings.Contains(err.Error(), "pixi.lock layer has invalid negative size -1 bytes") {
+		t.Fatalf("expected negative size error, got: %v", err)
 	}
 }
 

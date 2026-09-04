@@ -360,6 +360,20 @@ func classifyBundleManifest(m ocispec.Manifest) (classifiedManifest, error) {
 	return out, nil
 }
 
+func validateCoreLayerSize(desc ocispec.Descriptor) error {
+	title := desc.Annotations[ocispec.AnnotationTitle]
+	if title == "" {
+		title = "layer"
+	}
+	if desc.Size < 0 {
+		return fmt.Errorf("%s layer has invalid negative size %d bytes", title, desc.Size)
+	}
+	if desc.Size <= maxPixiLayerBytes {
+		return nil
+	}
+	return fmt.Errorf("%s layer size %d bytes exceeds cap %d bytes", title, desc.Size, maxPixiLayerBytes)
+}
+
 // resolveBundleManifest opens a remote repo, resolves the tag, fetches
 // the manifest, verifies it's a Nebi artifact, and classifies its
 // layers. Shared between PullBundle (metadata-only) and ExtractBundle
@@ -402,6 +416,12 @@ func resolveBundleManifest(
 	}
 	cm, err = classifyBundleManifest(manifest)
 	if err != nil {
+		return nil, cm, err
+	}
+	if err := validateCoreLayerSize(cm.pixiToml); err != nil {
+		return nil, cm, err
+	}
+	if err := validateCoreLayerSize(cm.pixiLock); err != nil {
 		return nil, cm, err
 	}
 	cm.manifestDesc = desc
@@ -676,15 +696,12 @@ func ChangeRepositoryVisibility(ctx context.Context, host, repoPath, apiToken st
 }
 
 // fetchLayerBytes returns the full raw bytes for a core pixi file layer.
-// It first rejects declared sizes above maxPixiLayerBytes, then reads at
-// most desc.Size+1 bytes so an oversized transport body is caught too.
+// resolveBundleManifest already rejects declared sizes above maxPixiLayerBytes;
+// this repeats the guard for direct callers, then caps the transport body at
+// desc.Size+1 so oversized responses are caught too.
 func fetchLayerBytes(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor) ([]byte, error) {
-	if desc.Size > maxPixiLayerBytes {
-		title := desc.Annotations[ocispec.AnnotationTitle]
-		if title == "" {
-			title = "layer"
-		}
-		return nil, fmt.Errorf("%s layer size %d bytes exceeds cap %d bytes", title, desc.Size, maxPixiLayerBytes)
+	if err := validateCoreLayerSize(desc); err != nil {
+		return nil, err
 	}
 	reader, err := repo.Fetch(ctx, desc)
 	if err != nil {
