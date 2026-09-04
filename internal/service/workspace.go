@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -424,6 +425,13 @@ func (s *WorkspaceService) ListVersions(wsID string) ([]models.WorkspaceVersion,
 		manifestVersion, err := pixi.ExtractWorkspaceVersion(versions[i].ManifestContent)
 		if err == nil {
 			versions[i].ManifestVersion = manifestVersion
+		} else {
+			slog.Warn(
+				"Failed to parse workspace version manifest",
+				"workspace_id", versions[i].WorkspaceID,
+				"version_number", versions[i].VersionNumber,
+				"error", err,
+			)
 		}
 		versions[i].ManifestContent = ""
 	}
@@ -445,6 +453,13 @@ func (s *WorkspaceService) GetVersion(wsID string, versionNum string) (*models.W
 	manifestVersion, err := pixi.ExtractWorkspaceVersion(version.ManifestContent)
 	if err == nil {
 		version.ManifestVersion = manifestVersion
+	} else {
+		slog.Warn(
+			"Failed to parse workspace version manifest",
+			"workspace_id", version.WorkspaceID,
+			"version_number", version.VersionNumber,
+			"error", err,
+		)
 	}
 	return &version, nil
 }

@@ -19,6 +19,7 @@ import {
   useRollback,
   useVersions,
 } from '@/hooks/useVersions';
+import { getWorkspaceVersionLabel } from '@/lib/utils';
 import type { WorkspaceVersion } from '@/types';
 
 interface VersionHistoryProps {
@@ -28,8 +29,8 @@ interface VersionHistoryProps {
 
 const getVersionTitle = (version: WorkspaceVersion) =>
   version.manifest_version
-    ? `Workspace version ${version.manifest_version}`
-    : `Snapshot ${version.version_number}`;
+    ? `Workspace version ${getWorkspaceVersionLabel(version)}`
+    : getWorkspaceVersionLabel(version);
 
 export const VersionHistory = ({
   environmentId,

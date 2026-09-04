@@ -30,11 +30,12 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 import { UserBadge } from '@/components/ui/user-badge';
-import { capitalize, getWorkspaceStatusColor } from '@/lib/utils';
+import {
+  capitalize,
+  getWorkspaceStatusColor,
+  getWorkspaceVersionLabel,
+} from '@/lib/utils';
 import type { RemoteWorkspaceTag, RemoteWorkspaceVersion } from '@/types';
-
-const getVersionLabel = (version: RemoteWorkspaceVersion) =>
-  version.manifest_version || 'Not set';
 
 export const RemoteWorkspaceDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -284,7 +285,9 @@ export const RemoteWorkspaceDetail = () => {
                     {versions.map((v: RemoteWorkspaceVersion) => (
                       <TableRow key={v.id || v.version_number}>
                         <TableCell>
-                          <Badge variant="outline">{getVersionLabel(v)}</Badge>
+                          <Badge variant="outline">
+                            {getWorkspaceVersionLabel(v)}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           #{v.version_number}
