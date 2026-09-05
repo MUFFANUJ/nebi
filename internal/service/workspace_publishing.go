@@ -69,6 +69,7 @@ func (s *WorkspaceService) PublishWorkspace(ctx context.Context, wsID string, re
 		extraTags = append(extraTags, t)
 	}
 
+	maxCoreLayerBytes := ociCoreLayerLimit(s.limits.LockBytes)
 	var digest string
 	if s.isLocal {
 		regEndpoint := oci.Registry{
@@ -80,7 +81,7 @@ func (s *WorkspaceService) PublishWorkspace(ctx context.Context, wsID string, re
 		}
 		res, err := oci.Publish(ctx, wsPath, regEndpoint, req.Repository, req.Tag,
 			oci.WithExtraTags(extraTags...),
-			oci.WithMaxCoreLayerBytes(ociCoreLayerLimit(s.limits.LockBytes)),
+			oci.WithMaxCoreLayerBytes(maxCoreLayerBytes),
 		)
 		if err != nil {
 			return nil, mapOCILimitError(fmt.Errorf("publish failed: %w", err))
@@ -94,7 +95,7 @@ func (s *WorkspaceService) PublishWorkspace(ctx context.Context, wsID string, re
 			Username:          ep.Username,
 			Password:          ep.Password,
 			RegistryHost:      ep.Host,
-			MaxCoreLayerBytes: ociCoreLayerLimit(s.limits.LockBytes),
+			MaxCoreLayerBytes: maxCoreLayerBytes,
 		})
 		if err != nil {
 			return nil, mapOCILimitError(fmt.Errorf("publish failed: %w", err))

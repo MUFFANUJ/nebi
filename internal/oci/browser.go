@@ -420,6 +420,23 @@ func validateManifestSize(desc ocispec.Descriptor) error {
 	return &sizeLimitError{bodyName: "manifest", size: desc.Size, maxBytes: maxManifestBytes}
 }
 
+func fetchManifestBytes(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor) ([]byte, error) {
+	if err := validateManifestSize(desc); err != nil {
+		return nil, err
+	}
+	manifestReader, err := repo.Fetch(ctx, desc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch manifest: %w", err)
+	}
+	defer manifestReader.Close()
+
+	manifestData, err := readAllBounded(manifestReader, maxManifestBytes, "manifest")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifest: %w", err)
+	}
+	return manifestData, nil
+}
+
 // resolveBundleManifest opens a remote repo, resolves the tag, fetches
 // the manifest, verifies it's a Nebi artifact, and classifies its
 // layers. Shared between PullBundle (metadata-only) and ExtractBundle
@@ -444,17 +461,9 @@ func resolveBundleManifest(
 	if err != nil {
 		return nil, cm, fmt.Errorf("failed to resolve tag %s: %w", tag, err)
 	}
-	if err := validateManifestSize(desc); err != nil {
+	manifestData, err := fetchManifestBytes(ctx, repo, desc)
+	if err != nil {
 		return nil, cm, err
-	}
-	manifestReader, err := repo.Fetch(ctx, desc)
-	if err != nil {
-		return nil, cm, fmt.Errorf("failed to fetch manifest: %w", err)
-	}
-	manifestData, err := readAllBounded(manifestReader, maxManifestBytes, "manifest")
-	manifestReader.Close()
-	if err != nil {
-		return nil, cm, fmt.Errorf("failed to read manifest: %w", err)
 	}
 	var manifest ocispec.Manifest
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
@@ -507,11 +516,11 @@ func PullBundle(ctx context.Context, repoRef, tag string, opts PullOptions) (*Pu
 		return nil, err
 	}
 
-	tomlBytes, err := fetchLayerBytes(ctx, repo, cm.pixiToml, opts.MaxCoreLayerBytes)
+	tomlBytes, err := fetchLayerBytes(ctx, repo, cm.pixiToml)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch pixi.toml layer: %w", err)
 	}
-	lockBytes, err := fetchLayerBytes(ctx, repo, cm.pixiLock, opts.MaxCoreLayerBytes)
+	lockBytes, err := fetchLayerBytes(ctx, repo, cm.pixiLock)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch pixi.lock layer: %w", err)
 	}
@@ -606,8 +615,8 @@ func ExtractBundle(ctx context.Context, repoRef, tag, destDir string, opts PullO
 // listed in the returned result's Assets slice but never fetched.
 func PullEnvironment(ctx context.Context, repoRef, tag string, opts BrowseOptions) (*PullResult, error) {
 	return PullBundle(ctx, repoRef, tag, PullOptions{
-		Username: opts.Username,
-		Password: opts.Password,
+		Username:  opts.Username,
+		Password:  opts.Password,
 		PlainHTTP: opts.PlainHTTP,
 	})
 }
@@ -642,17 +651,7 @@ func IsNebiRepository(ctx context.Context, repoRef string, opts BrowseOptions) b
 	if err != nil {
 		return false
 	}
-	if err := validateManifestSize(desc); err != nil {
-		return false
-	}
-
-	manifestReader, err := repo.Fetch(ctx, desc)
-	if err != nil {
-		return false
-	}
-	defer manifestReader.Close()
-
-	manifestData, err := readAllBounded(manifestReader, maxManifestBytes, "manifest")
+	manifestData, err := fetchManifestBytes(ctx, repo, desc)
 	if err != nil {
 		return false
 	}
@@ -759,13 +758,9 @@ func ChangeRepositoryVisibilityWithClient(ctx context.Context, host, repoPath, a
 }
 
 // fetchLayerBytes returns the full raw bytes for a core pixi file layer.
-// resolveBundleManifest already rejects declared sizes above the configured
-// core cap; this repeats the guard as defense-in-depth, then caps the
-// transport body at desc.Size+1 so oversized responses are caught too.
-func fetchLayerBytes(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, maxCoreLayerBytes int64) ([]byte, error) {
-	if err := validateCoreLayerSize(desc, maxCoreLayerBytes); err != nil {
-		return nil, err
-	}
+// resolveBundleManifest already rejects invalid declared sizes; this caps
+// the transport body at desc.Size+1 so oversized responses are caught too.
+func fetchLayerBytes(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor) ([]byte, error) {
 	reader, err := repo.Fetch(ctx, desc)
 	if err != nil {
 		return nil, err
