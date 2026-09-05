@@ -80,22 +80,24 @@ func (s *WorkspaceService) PublishWorkspace(ctx context.Context, wsID string, re
 		}
 		res, err := oci.Publish(ctx, wsPath, regEndpoint, req.Repository, req.Tag,
 			oci.WithExtraTags(extraTags...),
+			oci.WithMaxCoreLayerBytes(ociCoreLayerLimit(s.limits.LockBytes)),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("publish failed: %w", err)
+			return nil, mapOCILimitError(fmt.Errorf("publish failed: %w", err))
 		}
 		digest = res.Digest
 	} else {
 		d, err := oci.PublishWorkspace(ctx, wsPath, oci.PublishOptions{
-			Repository:   fullRepo,
-			Tag:          req.Tag,
-			ExtraTags:    extraTags,
-			Username:     ep.Username,
-			Password:     ep.Password,
-			RegistryHost: ep.Host,
+			Repository:        fullRepo,
+			Tag:               req.Tag,
+			ExtraTags:         extraTags,
+			Username:          ep.Username,
+			Password:          ep.Password,
+			RegistryHost:      ep.Host,
+			MaxCoreLayerBytes: ociCoreLayerLimit(s.limits.LockBytes),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("publish failed: %w", err)
+			return nil, mapOCILimitError(fmt.Errorf("publish failed: %w", err))
 		}
 		digest = d
 	}

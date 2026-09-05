@@ -219,11 +219,6 @@ func TestListRepositoriesViaQuayAPI_FollowsPagination(t *testing.T) {
 }
 
 func TestChangeRepositoryVisibility_CapsErrorBody(t *testing.T) {
-	oldDefaultClient := http.DefaultClient
-	t.Cleanup(func() {
-		http.DefaultClient = oldDefaultClient
-	})
-
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("method: got %s want POST", r.Method)
@@ -235,13 +230,12 @@ func TestChangeRepositoryVisibility_CapsErrorBody(t *testing.T) {
 		_, _ = io.WriteString(w, "quay says no: "+strings.Repeat("X", int(maxQuayErrorBodyBytes)+1024))
 	}))
 	defer srv.Close()
-	http.DefaultClient = srv.Client()
 
 	u, err := url.Parse(srv.URL)
 	if err != nil {
 		t.Fatalf("parse test server URL: %v", err)
 	}
-	err = ChangeRepositoryVisibility(context.Background(), u.Host, "ns/repo", "token", true)
+	err = ChangeRepositoryVisibilityWithClient(context.Background(), u.Host, "ns/repo", "token", true, srv.Client())
 	if err == nil {
 		t.Fatal("expected visibility API error, got nil")
 	}
