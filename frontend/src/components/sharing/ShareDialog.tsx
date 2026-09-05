@@ -12,12 +12,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
   SelectContent,
   SelectItem,
-  SelectRoot,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select-v2';
+} from '@/components/ui/select';
 import {
   useCollaborators,
   useIsAdmin,
@@ -297,9 +297,11 @@ export const ShareDialog = ({
                       >
                         User
                       </label>
-                      <SelectRoot
-                        value={selectedUser}
-                        onValueChange={setSelectedUser}
+                      <Select
+                        value={selectedUser || null}
+                        onValueChange={(value: string | null) =>
+                          setSelectedUser(value ?? '')
+                        }
                       >
                         <SelectTrigger id={userSelectId} className="w-full">
                           <SelectValue placeholder="Select user..." />
@@ -311,7 +313,7 @@ export const ShareDialog = ({
                             </SelectItem>
                           ))}
                         </SelectContent>
-                      </SelectRoot>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">
@@ -321,14 +323,22 @@ export const ShareDialog = ({
                       >
                         Access Level
                       </label>
-                      <SelectRoot
+                      <Select
                         value={selectedRole}
-                        onValueChange={(value) =>
-                          setSelectedRole(value as 'editor' | 'viewer')
+                        onValueChange={(value: string | null) =>
+                          setSelectedRole(
+                            (value ?? 'viewer') as 'editor' | 'viewer',
+                          )
                         }
                       >
                         <SelectTrigger id={userRoleSelectId} className="w-full">
-                          <SelectValue />
+                          <SelectValue>
+                            {(value: string | null) =>
+                              value === 'editor'
+                                ? 'Editor (Can modify)'
+                                : 'Viewer (Read-only)'
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="viewer">
@@ -338,11 +348,11 @@ export const ShareDialog = ({
                             Editor (Can modify)
                           </SelectItem>
                         </SelectContent>
-                      </SelectRoot>
+                      </Select>
                     </div>
 
                     <Button
-                      type="submit"
+                      render={<button type="submit" />}
                       disabled={!selectedUser || shareMutation.isPending}
                       className="w-full"
                     >
@@ -374,9 +384,11 @@ export const ShareDialog = ({
                     >
                       Group
                     </label>
-                    <SelectRoot
-                      value={selectedGroup}
-                      onValueChange={setSelectedGroup}
+                    <Select
+                      value={selectedGroup || null}
+                      onValueChange={(value: string | null) =>
+                        setSelectedGroup(value ?? '')
+                      }
                     >
                       <SelectTrigger id={groupSelectId} className="w-full">
                         <SelectValue placeholder="Select group..." />
@@ -388,7 +400,7 @@ export const ShareDialog = ({
                           </SelectItem>
                         ))}
                       </SelectContent>
-                    </SelectRoot>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
@@ -398,14 +410,22 @@ export const ShareDialog = ({
                     >
                       Access Level
                     </label>
-                    <SelectRoot
+                    <Select
                       value={selectedRole}
-                      onValueChange={(value) =>
-                        setSelectedRole(value as 'editor' | 'viewer')
+                      onValueChange={(value: string | null) =>
+                        setSelectedRole(
+                          (value ?? 'viewer') as 'editor' | 'viewer',
+                        )
                       }
                     >
                       <SelectTrigger id={groupRoleSelectId} className="w-full">
-                        <SelectValue />
+                        <SelectValue>
+                          {(value: string | null) =>
+                            value === 'editor'
+                              ? 'Editor (Can modify)'
+                              : 'Viewer (Read-only)'
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="viewer">
@@ -415,11 +435,11 @@ export const ShareDialog = ({
                           Editor (Can modify)
                         </SelectItem>
                       </SelectContent>
-                    </SelectRoot>
+                    </Select>
                   </div>
 
                   <Button
-                    type="submit"
+                    render={<button type="submit" />}
                     disabled={!selectedGroup || shareGroupMutation.isPending}
                     className="w-full"
                   >
