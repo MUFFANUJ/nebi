@@ -28,19 +28,19 @@ jobs:
           - platform: linux/amd64
             runner: ubuntu-latest
             image_name: nebi
-            nebi_binary: nebi-server
+            docker_target: nebi-server
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
             image_name: nebi
-            nebi_binary: nebi-server
+            docker_target: nebi-server
           - platform: linux/amd64
             runner: ubuntu-latest
             image_name: nebi-web
-            nebi_binary: nebi-web
+            docker_target: nebi-web
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
             image_name: nebi-web
-            nebi_binary: nebi-web
+            docker_target: nebi-web
     runs-on: ${{ matrix.runner }}
 
     steps:
@@ -120,9 +120,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          target: ${{ matrix.docker_target }}
           build-args: |
             VERSION=${{ steps.version.outputs.version }}
-            NEBI_BINARY=${{ matrix.nebi_binary }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.platform }}
@@ -134,7 +134,7 @@ jobs:
       - name: Smoke test
         run: |
           IMAGE_TAG="${{ env.REGISTRY }}/${{ env.PROJECT }}/${{ matrix.image_name }}:${{ steps.meta.outputs.version }}"
-          CONTAINER_NAME="test-${{ matrix.nebi_binary }}-${{ env.PLATFORM_PAIR }}"
+          CONTAINER_NAME="test-${{ matrix.docker_target }}-${{ env.PLATFORM_PAIR }}"
           echo "Testing image: ${IMAGE_TAG}"
 
           # Start container with port mapping
@@ -193,9 +193,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          target: ${{ matrix.docker_target }}
           build-args: |
             VERSION=${{ steps.version.outputs.version }}
-            NEBI_BINARY=${{ matrix.nebi_binary }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.PROJECT }}/${{ matrix.image_name }},push-by-digest=true,name-canonical=true,push=true
@@ -212,7 +212,7 @@ jobs:
         if: steps.registry.outputs.publish == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: digests-${{ matrix.nebi_binary }}-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ matrix.docker_target }}-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -229,9 +229,9 @@ jobs:
       matrix:
         include:
           - image_name: nebi
-            nebi_binary: nebi-server
+            docker_target: nebi-server
           - image_name: nebi-web
-            nebi_binary: nebi-web
+            docker_target: nebi-web
 
     steps:
       - name: Determine registry publishing
@@ -273,7 +273,7 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-${{ matrix.nebi_binary }}-*
+          pattern: digests-${{ matrix.docker_target }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
