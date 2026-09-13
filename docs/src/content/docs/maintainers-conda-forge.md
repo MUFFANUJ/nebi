@@ -4,12 +4,13 @@ sidebar:
   label: "Conda-Forge Releases"
 ---
 
-The split Nebi release is packaged as four conda-forge packages after the feedstocks are set up:
+The split-binary codebase builds four executables, but Nebi currently publishes three conda-forge package names:
 
-- **`nebi-cli`** — the CLI package; it builds `./cmd/nebi-cli` and installs the `nebi` executable (pure Go, `go-nocgo`)
-- **`nebi-server`** — the team server (pure Go, `go-nocgo`)
-- **`nebi-web`** — the local web app (pure Go, `go-nocgo`)
+- **`nebi`** — the recommended package; it depends on `nebi-cli` and `nebi-desktop`
+- **`nebi-cli`** — the CLI-only package; it builds the CLI entry point and installs the `nebi` executable, not a `nebi-cli` executable (pure Go, `go-nocgo`)
 - **`nebi-desktop`** — the Wails desktop app (`go-cgo` + GTK3 + WebKit2GTK on Linux)
+
+TODO for the split-binary release: decide and publish packages for `nebi-server` and `nebi-web`.
 
 ## How releases work
 
@@ -27,11 +28,9 @@ Releases to conda-forge are **fully automated** after initial setup:
 
 ## Feedstock repos
 
-Once the staged-recipes PRs are merged, conda-forge creates:
+Current feedstock repos:
 
-- `nebi-cli-feedstock`
-- `nebi-server-feedstock`
-- `nebi-web-feedstock`
+- [`conda-forge/nebi-feedstock`](https://github.com/conda-forge/nebi-feedstock)
 - [`conda-forge/nebi-desktop-feedstock`](https://github.com/conda-forge/nebi-desktop-feedstock)
 
 Maintainers listed in the recipe get commit access to these repos.
@@ -40,10 +39,10 @@ Maintainers listed in the recipe get commit access to these repos.
 
 Recipes are maintained in the feedstock repos (linked above). They use the **v1 format** (`recipe.yaml`) with `rattler-build`.
 
-### nebi-cli, nebi-server, and nebi-web
+### nebi and nebi-cli
 
 - **Compiler**: `go-nocgo` (pure Go, no CGO)
-- **Build**: installs npm deps → builds React frontend → embeds in Go binaries via `//go:embed` → `go build -o nebi ./cmd/nebi-cli`, `go build ./cmd/nebi-server`, and `go build ./cmd/nebi-web`
+- **Build**: installs npm deps → builds React frontend → embeds in Go binary via `//go:embed` → builds the CLI executable as `nebi`
 - **License**: `go-licenses` collects all transitive Go dependency licenses
 - **Platforms**: linux-64, linux-aarch64, osx-64, osx-arm64, win-64
 
@@ -60,11 +59,11 @@ Clone the feedstock you are changing and build locally with `rattler-build`:
 
 ```bash
 pixi global install rattler-build
-gh repo clone conda-forge/nebi-cli-feedstock
-rattler-build build --recipe nebi-cli-feedstock/recipe/recipe.yaml
+gh repo clone conda-forge/nebi-feedstock
+rattler-build build --recipe nebi-feedstock/recipe/recipe.yaml
 ```
 
-Repeat with `nebi-server-feedstock`, `nebi-web-feedstock`, or `nebi-desktop-feedstock` when testing those packages.
+Repeat with `nebi-desktop-feedstock` when testing the desktop package.
 
 The desktop recipe needs a `conda_build_config.yaml` for local builds (not needed on conda-forge CI):
 
@@ -76,10 +75,10 @@ c_stdlib_version:
   - "2.17"
 ```
 
-Install the locally-built packages you want to verify:
+Install a locally-built package:
 
 ```bash
-pixi global install --channel ./output --channel conda-forge nebi-cli nebi-server nebi-web nebi-desktop
+pixi global install --channel ./output --channel conda-forge nebi
 ```
 
 ## Updating recipes

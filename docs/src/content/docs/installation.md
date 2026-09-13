@@ -12,21 +12,26 @@ curl -fsSL https://pixi.sh/install.sh | bash
 
 See the [Pixi installation docs](https://pixi.sh) for more options.
 
-## Recommended: Install Released Binaries
+## Recommended: Install with Pixi
 
-Install the CLI, server, and local web app from the latest GitHub release:
+Install the recommended `nebi` package with [pixi global install](https://pixi.prefix.dev/latest/reference/cli/pixi/global/install/#pixi-global-install). The package installs the `nebi` CLI command and the desktop app:
 
 ```bash
-curl -fsSL https://nebi.nebari.dev/install.sh | sh
+pixi global install nebi
 ```
 
-Pass `--desktop` to the installer command to install the desktop application too.
+If you only need one part, install the underlying package directly. The CLI-only package is named `nebi-cli`, but the command it installs is still `nebi`:
+
+```bash
+pixi global install nebi-cli
+pixi global install nebi-desktop
+```
 
 ## Installation script
 
 ### Linux & MacOS
 
-This installs the latest release to `~/.local/bin`:
+This installs the latest `nebi`, `nebi-server`, and `nebi-web` release binaries to `~/.local/bin`, plus the desktop app:
 
 ```bash
 curl -fsSL https://nebi.nebari.dev/install.sh | sh -s -- --desktop
@@ -59,13 +64,11 @@ irm https://nebi.nebari.dev/install.ps1 | iex
 
 ## Install with conda
 
-The currently published conda-forge packages provide the CLI and desktop app. The CLI package installs the `nebi` command:
+The same packages are distributed on conda-forge. The `nebi` package installs the `nebi` CLI command and the desktop app:
 
 ```bash
-conda install conda-forge::nebi-cli conda-forge::nebi-desktop
+conda install conda-forge::nebi
 ```
-
-The split `nebi-server` and `nebi-web` conda-forge packages are part of the binary split release process. Until those feedstocks are published, install those binaries from GitHub Releases or from source.
 
 ## Install from source
 

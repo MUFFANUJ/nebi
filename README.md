@@ -53,25 +53,24 @@ Nebi builds on Pixi to add what teams need: version history, rollback, sharing e
 
 ### Install
 
-Pixi is a required Nebi dependency. If not already installed, install pixi as described in the [pixi docs](https://pixi.prefix.dev/latest/installation/). Then install Nebi's released command-line binaries:
+Pixi is a required Nebi dependency. If not already installed, install pixi as described in the [pixi docs](https://pixi.prefix.dev/latest/installation/). Then install the recommended `nebi` package with pixi. The package installs the `nebi` CLI command and the desktop app:
 
 ```sh
-curl -fsSL https://nebi.nebari.dev/install.sh | sh
+# Installs the `nebi` CLI command and the desktop app
+pixi global install nebi
 ```
 
-Add `--desktop` to the installer command to install the desktop app too.
-
-If you prefer conda-forge packages, the currently published Pixi packages are:
+If you only need one part, install the underlying package directly. The CLI-only package is named `nebi-cli`, but the command it installs is still `nebi`:
 
 ```sh
-# CLI package, installs the `nebi` command
+# CLI only
 pixi global install nebi-cli
 
 # Desktop app only
 pixi global install nebi-desktop
 ```
 
-The split `nebi-server` and `nebi-web` conda-forge packages are release prerequisites for this binary split. Until those feedstocks are published, install those binaries from GitHub Releases or from source.
+> TODO for the split-binary release: publish/verify Pixi packages for `nebi-server` and `nebi-web` before documenting them as installable with Pixi.
 
 [Alternative installation methods](#alternative-installation-methods) are also available.
 
@@ -86,6 +85,8 @@ nebi-web
 ```
 
 This starts the local web UI and API at [http://localhost:8460](http://localhost:8460).
+
+Until `nebi-web` has its own Pixi package, install it with the shell script below or build it from source.
 
 In a new terminal, connect the CLI to the server:
 
