@@ -35,10 +35,22 @@ Examples:
 	Run: run,
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version",
+	Long:  `Print the version of the nebi-web executable.`,
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("nebi-web version %s\n", Version)
+	},
+}
+
 func init() {
 	rootCmd.Flags().StringVar(&host, "host", "", "Bind host/IP (overrides config), e.g. 127.0.0.1")
 	rootCmd.Flags().IntVarP(&port, "port", "p", 0, "Port to run server on (overrides config)")
 	rootCmd.Flags().StringVarP(&componentMode, "mode", "m", "both", "Run mode: server, worker, or both")
+
+	rootCmd.AddCommand(versionCmd)
 }
 
 func run(cmd *cobra.Command, args []string) {
