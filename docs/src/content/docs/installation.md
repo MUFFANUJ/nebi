@@ -84,6 +84,20 @@ make build
 
 This builds `bin/nebi`, `bin/nebi-server`, and `bin/nebi-web`.
 
+### Build Docker images locally
+
+The Dockerfile uses explicit targets for each image. Pass `--target` to choose which binary goes into the final image:
+
+```bash
+# Team server image
+docker build --target nebi-server -t nebi:local .
+
+# Local web image
+docker build --target nebi-web -t nebi-web:local .
+```
+
+The image tag (`-t`) only names the image. It does not choose the Dockerfile target.
+
 From a source checkout, build the desktop app with Wails because it packages a native app wrapper:
 
 ```bash
