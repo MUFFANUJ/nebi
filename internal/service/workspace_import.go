@@ -77,9 +77,13 @@ func (s *WorkspaceService) ImportFromRegistry(ctx context.Context, registryID st
 		return nil, &ValidationError{Message: "repository or repository_path is required"}
 	}
 	pullOpts := oci.PullOptions{
-		Username:          ep.Username,
-		Password:          ep.Password,
-		PlainHTTP:         ep.PlainHTTP,
+		Username:  ep.Username,
+		Password:  ep.Password,
+		PlainHTTP: ep.PlainHTTP,
+		// The OCI reader has one core-layer cap today, so use the
+		// larger lockfile limit while staging imports. pixi.toml is
+		// still checked against ManifestBytes during job admission and
+		// snapshot creation before pixi consumes it.
 		MaxCoreLayerBytes: ociCoreLayerLimit(s.limits.LockBytes),
 		// Cap total bundle size to defend against a malicious or
 		// misconfigured registry serving a runaway asset layer. 5 GiB

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +30,8 @@ import (
 var emptyBlobDigest = digest.FromBytes(nil)
 
 const (
+	// maxManifestBytes caps the OCI image manifest JSON document, not
+	// pixi.toml content. pixi.toml is governed by service limits.
 	maxManifestBytes      int64 = 1 * 1024 * 1024
 	maxQuayErrorBodyBytes int64 = 64 * 1024
 	defaultMaxCoreBytes   int64 = 16 * 1024 * 1024
@@ -69,6 +72,12 @@ func IsLimitError(err error) bool {
 func readAllBounded(r io.Reader, maxBytes int64, bodyName string) ([]byte, error) {
 	if maxBytes < 0 {
 		return nil, fmt.Errorf("%s has invalid negative limit %d bytes", bodyName, maxBytes)
+	}
+	// The bounded-read pattern below asks LimitReader for maxBytes+1 so
+	// we can detect "one byte too many". Reject the largest int64 value
+	// up front because adding 1 would overflow and make the limit invalid.
+	if maxBytes >= math.MaxInt64 {
+		return nil, fmt.Errorf("%s has invalid too-large limit %d bytes", bodyName, maxBytes)
 	}
 	data, err := io.ReadAll(io.LimitReader(r, maxBytes+1))
 	if err != nil {
@@ -400,6 +409,12 @@ func validateCoreLayerSize(desc ocispec.Descriptor, maxBytes int64) error {
 	if desc.Size < 0 {
 		return fmt.Errorf("%s layer has invalid negative size %d bytes", title, desc.Size)
 	}
+	// A disabled operator cap still needs a hard sanity limit: fetchLayerBytes
+	// passes desc.Size to readAllBounded, which reads desc.Size+1 bytes to catch
+	// oversized responses. Values this large would make that addition unsafe.
+	if desc.Size >= math.MaxInt64-1 {
+		return fmt.Errorf("%s layer has invalid too-large size %d bytes", title, desc.Size)
+	}
 	limit := maxBytes
 	if limit == 0 {
 		limit = defaultMaxCoreBytes
@@ -483,17 +498,49 @@ func resolveBundleManifest(
 		return nil, cm, err
 	}
 	cm.manifestDesc = desc
-	if opts.MaxBundleBytes > 0 {
-		var total int64
-		total += cm.pixiToml.Size + cm.pixiLock.Size
-		for _, a := range cm.assets {
-			total += a.Size
-		}
-		if total > opts.MaxBundleBytes {
-			return nil, cm, &sizeLimitError{bodyName: "bundle", size: total, maxBytes: opts.MaxBundleBytes}
-		}
+	if err := validateBundleSize(cm, opts.MaxBundleBytes); err != nil {
+		return nil, cm, err
 	}
 	return repo, cm, nil
+}
+
+func validateBundleSize(cm classifiedManifest, maxBytes int64) error {
+	if maxBytes <= 0 {
+		return nil
+	}
+	var total int64
+	var err error
+	total, err = addBundleLayerSize(total, cm.pixiToml.Size, maxBytes)
+	if err != nil {
+		return err
+	}
+	total, err = addBundleLayerSize(total, cm.pixiLock.Size, maxBytes)
+	if err != nil {
+		return err
+	}
+	for _, a := range cm.assets {
+		total, err = addBundleLayerSize(total, a.Size, maxBytes)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func addBundleLayerSize(total, size, maxBytes int64) (int64, error) {
+	if size < 0 {
+		return 0, fmt.Errorf("bundle layer has invalid negative size %d bytes", size)
+	}
+	// Check before adding so a hostile manifest cannot wrap the total
+	// negative and slip past the MaxBundleBytes comparison.
+	if total > math.MaxInt64-size {
+		return 0, &sizeLimitError{bodyName: "bundle", size: math.MaxInt64, maxBytes: maxBytes}
+	}
+	total += size
+	if total > maxBytes {
+		return 0, &sizeLimitError{bodyName: "bundle", size: total, maxBytes: maxBytes}
+	}
+	return total, nil
 }
 
 // assetListing converts classified asset layers into the path-only

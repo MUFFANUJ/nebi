@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -170,6 +171,50 @@ func TestClassifyBundleManifest(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestReadAllBounded_RejectsMaxInt64Limit(t *testing.T) {
+	data, err := readAllBounded(strings.NewReader("payload"), math.MaxInt64, "layer body")
+	if err == nil {
+		t.Fatal("expected max int64 limit rejection, got nil")
+	}
+	if data != nil {
+		t.Fatalf("expected no data on invalid limit, got %q", string(data))
+	}
+	if !strings.Contains(err.Error(), "invalid too-large limit") {
+		t.Fatalf("expected too-large limit error, got %v", err)
+	}
+}
+
+func TestValidateCoreLayerSize_RejectsHugeDeclaredSizeWhenCapDisabled(t *testing.T) {
+	desc := layerDesc(MediaTypePixiLock, "pixi.lock")
+	desc.Size = math.MaxInt64 - 1
+
+	err := validateCoreLayerSize(desc, -1)
+	if err == nil {
+		t.Fatal("expected huge declared size rejection, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid too-large size") {
+		t.Fatalf("expected too-large size error, got %v", err)
+	}
+}
+
+func TestValidateBundleSize_RejectsOverflow(t *testing.T) {
+	cm := classifiedManifest{
+		pixiToml: ocispec.Descriptor{Size: math.MaxInt64 - 2},
+		pixiLock: ocispec.Descriptor{Size: 1},
+		assets: []ocispec.Descriptor{
+			{Size: 10},
+		},
+	}
+
+	err := validateBundleSize(cm, math.MaxInt64)
+	if err == nil {
+		t.Fatal("expected bundle size overflow rejection, got nil")
+	}
+	if !strings.Contains(err.Error(), "bundle size") || !strings.Contains(err.Error(), "exceeds cap") {
+		t.Fatalf("expected bundle cap error, got %v", err)
 	}
 }
 
