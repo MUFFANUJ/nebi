@@ -84,7 +84,7 @@ func (s *WorkspaceService) ImportFromRegistry(ctx context.Context, registryID st
 		// larger lockfile limit while staging imports. pixi.toml is
 		// still checked against ManifestBytes during job admission and
 		// snapshot creation before pixi consumes it.
-		MaxCoreLayerBytes: ociCoreLayerLimit(s.limits.LockBytes),
+		MaxCoreLayerBytes: int64(s.limits.LockBytes),
 		// Cap total bundle size to defend against a malicious or
 		// misconfigured registry serving a runaway asset layer. 5 GiB
 		// is well above any reasonable Pixi environment but small

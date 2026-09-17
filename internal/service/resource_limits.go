@@ -121,13 +121,6 @@ func (s *WorkspaceService) listOptions(envPath string) pixi.ListOptions {
 	}
 }
 
-func ociCoreLayerLimit(maxBytes int) int64 {
-	if maxBytes <= 0 {
-		return -1
-	}
-	return int64(maxBytes)
-}
-
 func (s *WorkspaceService) mapPixiListError(err error) error {
 	var outputLimitErr *pixi.OutputLimitError
 	if errors.As(err, &outputLimitErr) {

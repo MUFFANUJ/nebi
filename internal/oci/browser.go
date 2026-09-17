@@ -34,7 +34,8 @@ const (
 	// pixi.toml content. pixi.toml is governed by service limits.
 	maxManifestBytes      int64 = 1 * 1024 * 1024
 	maxQuayErrorBodyBytes int64 = 64 * 1024
-	defaultMaxCoreBytes   int64 = 16 * 1024 * 1024
+	// DefaultMaxCoreLayerBytes is the CLI's default per-core-layer cap.
+	DefaultMaxCoreLayerBytes int64 = 16 * 1024 * 1024
 )
 
 type readLimitError struct {
@@ -125,8 +126,8 @@ type PullOptions struct {
 	// Zero or negative = no cap.
 	MaxBundleBytes int64
 	// MaxCoreLayerBytes caps each buffered core layer (pixi.toml and
-	// pixi.lock) before fetch. Zero uses the default 16 MiB cap so CLI
-	// callers keep the default protection; negative disables this cap.
+	// pixi.lock) before fetch. Zero or negative = no cap. CLI callers
+	// that want the standard protection pass DefaultMaxCoreLayerBytes.
 	MaxCoreLayerBytes int64
 }
 
@@ -415,14 +416,10 @@ func validateCoreLayerSize(desc ocispec.Descriptor, maxBytes int64) error {
 	if desc.Size >= math.MaxInt64-1 {
 		return fmt.Errorf("%s layer has invalid too-large size %d bytes", title, desc.Size)
 	}
-	limit := maxBytes
-	if limit == 0 {
-		limit = defaultMaxCoreBytes
-	}
-	if limit < 0 || desc.Size <= limit {
+	if maxBytes <= 0 || desc.Size <= maxBytes {
 		return nil
 	}
-	return &sizeLimitError{bodyName: title + " layer", size: desc.Size, maxBytes: limit}
+	return &sizeLimitError{bodyName: title + " layer", size: desc.Size, maxBytes: maxBytes}
 }
 
 func validateManifestSize(desc ocispec.Descriptor) error {
@@ -662,9 +659,10 @@ func ExtractBundle(ctx context.Context, repoRef, tag, destDir string, opts PullO
 // listed in the returned result's Assets slice but never fetched.
 func PullEnvironment(ctx context.Context, repoRef, tag string, opts BrowseOptions) (*PullResult, error) {
 	return PullBundle(ctx, repoRef, tag, PullOptions{
-		Username:  opts.Username,
-		Password:  opts.Password,
-		PlainHTTP: opts.PlainHTTP,
+		Username:          opts.Username,
+		Password:          opts.Password,
+		PlainHTTP:         opts.PlainHTTP,
+		MaxCoreLayerBytes: DefaultMaxCoreLayerBytes,
 	})
 }
 

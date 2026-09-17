@@ -65,11 +65,12 @@ type PublishResult struct {
 type PublishOption func(*publishConfig)
 
 type publishConfig struct {
-	extraTags         []string
-	concurrency       int
-	progress          func(label string, pushed, total int)
-	maxCoreLayerBytes int64
-	assetsOverride    *[]Asset // non-nil when WithAssets was used
+	extraTags            []string
+	concurrency          int
+	progress             func(label string, pushed, total int)
+	maxCoreLayerBytes    int64
+	maxCoreLayerBytesSet bool
+	assetsOverride       *[]Asset // non-nil when WithAssets was used
 }
 
 // WithExtraTags applies additional tags to the manifest after the primary
@@ -92,10 +93,13 @@ func WithProgress(fn func(label string, pushed, total int)) PublishOption {
 }
 
 // WithMaxCoreLayerBytes caps each core layer (pixi.toml and pixi.lock)
-// before any bytes are pushed. Zero uses the default 16 MiB cap; negative
-// disables this cap.
+// before any bytes are pushed. Zero or negative disables this cap. Omit
+// this option to use DefaultMaxCoreLayerBytes.
 func WithMaxCoreLayerBytes(maxBytes int64) PublishOption {
-	return func(c *publishConfig) { c.maxCoreLayerBytes = maxBytes }
+	return func(c *publishConfig) {
+		c.maxCoreLayerBytes = maxBytes
+		c.maxCoreLayerBytesSet = true
+	}
 }
 
 // withAssets bypasses the workspace walker and publishes the supplied
@@ -192,6 +196,9 @@ func resolveConfig(opts []PublishOption) *publishConfig {
 	}
 	if cfg.concurrency <= 0 {
 		cfg.concurrency = defaultConcurrency
+	}
+	if !cfg.maxCoreLayerBytesSet {
+		cfg.maxCoreLayerBytes = DefaultMaxCoreLayerBytes
 	}
 	return cfg
 }
@@ -368,12 +375,15 @@ func publishBundle(
 // builds a concatenated repository string rather than a Registry struct.
 // New callers should use Publish / PublishPixiOnly instead.
 type PublishOptions struct {
-	Repository        string
-	Tag               string
-	ExtraTags         []string
-	Username          string
-	Password          string
-	RegistryHost      string
+	Repository   string
+	Tag          string
+	ExtraTags    []string
+	Username     string
+	Password     string
+	RegistryHost string
+	// MaxCoreLayerBytes caps each core layer. Zero or negative disables
+	// this cap; callers that want the standard cap pass
+	// DefaultMaxCoreLayerBytes.
 	MaxCoreLayerBytes int64
 }
 

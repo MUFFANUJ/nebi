@@ -69,7 +69,7 @@ func (s *WorkspaceService) PublishWorkspace(ctx context.Context, wsID string, re
 		extraTags = append(extraTags, t)
 	}
 
-	maxCoreLayerBytes := ociCoreLayerLimit(s.limits.LockBytes)
+	maxCoreLayerBytes := int64(s.limits.LockBytes)
 	var digest string
 	if s.isLocal {
 		regEndpoint := oci.Registry{

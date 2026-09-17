@@ -337,15 +337,18 @@ func TestBundleReads_RejectCoreLayerDeclaredAboveCap(t *testing.T) {
 		}
 		for i := range manifest.Layers {
 			if manifest.Layers[i].MediaType == MediaTypePixiLock {
-				manifest.Layers[i].Size = defaultMaxCoreBytes + 1
+				manifest.Layers[i].Size = DefaultMaxCoreLayerBytes + 1
 			}
 		}
 		return json.Marshal(manifest)
 	})
 	repoRef := strings.Replace(res.Repository, host, shimHost, 1)
-	wantErr := fmt.Sprintf("pixi.lock layer size %d bytes exceeds cap %d bytes", defaultMaxCoreBytes+1, defaultMaxCoreBytes)
+	wantErr := fmt.Sprintf("pixi.lock layer size %d bytes exceeds cap %d bytes", DefaultMaxCoreLayerBytes+1, DefaultMaxCoreLayerBytes)
 
-	_, err = PullBundle(context.Background(), repoRef, "v1", PullOptions{PlainHTTP: true})
+	_, err = PullBundle(context.Background(), repoRef, "v1", PullOptions{
+		PlainHTTP:         true,
+		MaxCoreLayerBytes: DefaultMaxCoreLayerBytes,
+	})
 	if err == nil {
 		t.Fatalf("expected oversized core layer rejection, got nil")
 	}
@@ -353,7 +356,10 @@ func TestBundleReads_RejectCoreLayerDeclaredAboveCap(t *testing.T) {
 		t.Fatalf("expected pixi.lock cap error, got: %v", err)
 	}
 
-	_, err = ExtractBundle(context.Background(), repoRef, "v1", t.TempDir(), PullOptions{PlainHTTP: true})
+	_, err = ExtractBundle(context.Background(), repoRef, "v1", t.TempDir(), PullOptions{
+		PlainHTTP:         true,
+		MaxCoreLayerBytes: DefaultMaxCoreLayerBytes,
+	})
 	if err == nil {
 		t.Fatalf("expected extract to reject oversized core layer, got nil")
 	}
@@ -396,26 +402,43 @@ func TestBundleReads_AllowsCoreLayerAboveDefaultWithConfiguredCap(t *testing.T) 
 	host := startTestRegistry(t)
 	src := t.TempDir()
 	writeFile(t, src, "pixi.toml", "[workspace]\nname = \"x\"\n")
-	writeFile(t, src, "pixi.lock", strings.Repeat("L", int(defaultMaxCoreBytes)+1))
+	writeFile(t, src, "pixi.lock", strings.Repeat("L", int(DefaultMaxCoreLayerBytes)+1))
+
+	_, err := Publish(context.Background(), src, testRegistry(host, "demo"), "defaultcore", "v1")
+	if err == nil {
+		t.Fatal("expected default publish cap to reject oversized core file")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("pixi.lock layer size %d bytes exceeds cap %d bytes", DefaultMaxCoreLayerBytes+1, DefaultMaxCoreLayerBytes)) {
+		t.Fatalf("expected default publish cap error, got: %v", err)
+	}
 
 	res, err := Publish(context.Background(), src, testRegistry(host, "demo"), "raisedcore", "v1",
-		WithMaxCoreLayerBytes(defaultMaxCoreBytes+1),
+		WithMaxCoreLayerBytes(DefaultMaxCoreLayerBytes+1),
 	)
 	if err != nil {
 		t.Fatalf("publish with raised cap: %v", err)
 	}
 
-	_, err = PullBundle(context.Background(), res.Repository, "v1", PullOptions{PlainHTTP: true})
+	_, err = PullBundle(context.Background(), res.Repository, "v1", PullOptions{
+		PlainHTTP:         true,
+		MaxCoreLayerBytes: DefaultMaxCoreLayerBytes,
+	})
 	if err == nil {
 		t.Fatal("expected default cap to reject oversized core layer")
 	}
-	if !strings.Contains(err.Error(), fmt.Sprintf("pixi.lock layer size %d bytes exceeds cap %d bytes", defaultMaxCoreBytes+1, defaultMaxCoreBytes)) {
+	if !strings.Contains(err.Error(), fmt.Sprintf("pixi.lock layer size %d bytes exceeds cap %d bytes", DefaultMaxCoreLayerBytes+1, DefaultMaxCoreLayerBytes)) {
 		t.Fatalf("expected default pixi.lock cap error, got: %v", err)
 	}
 
 	if _, err := PullBundle(context.Background(), res.Repository, "v1", PullOptions{
+		PlainHTTP: true,
+	}); err != nil {
+		t.Fatalf("pull with zero core cap: %v", err)
+	}
+
+	if _, err := PullBundle(context.Background(), res.Repository, "v1", PullOptions{
 		PlainHTTP:         true,
-		MaxCoreLayerBytes: defaultMaxCoreBytes + 1,
+		MaxCoreLayerBytes: DefaultMaxCoreLayerBytes + 1,
 	}); err != nil {
 		t.Fatalf("pull with raised cap: %v", err)
 	}
