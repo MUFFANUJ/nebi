@@ -213,8 +213,8 @@ func TestValidateBundleSize_RejectsOverflow(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected bundle size overflow rejection, got nil")
 	}
-	if !strings.Contains(err.Error(), "bundle size") || !strings.Contains(err.Error(), "exceeds cap") {
-		t.Fatalf("expected bundle cap error, got %v", err)
+	if !strings.Contains(err.Error(), "bundle size sum overflows int64") {
+		t.Fatalf("expected bundle size overflow error, got %v", err)
 	}
 }
 

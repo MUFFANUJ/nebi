@@ -361,6 +361,9 @@ func classifyBundleManifest(m ocispec.Manifest) (classifiedManifest, error) {
 	var out classifiedManifest
 	var haveToml, haveLock bool
 	for _, layer := range m.Layers {
+		if layer.Size < 0 {
+			return out, fmt.Errorf("%s layer has invalid negative size %d bytes", layer.Annotations[ocispec.AnnotationTitle], layer.Size)
+		}
 		switch layer.MediaType {
 		case MediaTypePixiToml:
 			if haveToml {
@@ -531,7 +534,7 @@ func addBundleLayerSize(total, size, maxBytes int64) (int64, error) {
 	// Check before adding so a hostile manifest cannot wrap the total
 	// negative and slip past the MaxBundleBytes comparison.
 	if total > math.MaxInt64-size {
-		return 0, &sizeLimitError{bodyName: "bundle", size: math.MaxInt64, maxBytes: maxBytes}
+		return 0, fmt.Errorf("bundle size sum overflows int64")
 	}
 	total += size
 	if total > maxBytes {

@@ -478,6 +478,44 @@ func TestBundleReads_RejectNegativeCoreLayerSize(t *testing.T) {
 	}
 }
 
+func TestBundleReads_RejectNegativeAssetSize(t *testing.T) {
+	host := startTestRegistry(t)
+	src := t.TempDir()
+	writeFile(t, src, "pixi.toml", "[workspace]\nname = \"x\"\n")
+	writeFile(t, src, "pixi.lock", "version: 6\n")
+	writeFile(t, src, "asset.txt", "asset")
+	res, err := Publish(context.Background(), src, testRegistry(host, "demo"), "negativeasset", "v1")
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	shimHost := startManifestRewritingRegistry(t, host, func(body []byte) ([]byte, error) {
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(body, &manifest); err != nil {
+			return nil, err
+		}
+		for i := range manifest.Layers {
+			if manifest.Layers[i].MediaType == MediaTypeNebiAsset {
+				manifest.Layers[i].Size = -1
+			}
+		}
+		return json.Marshal(manifest)
+	})
+	repoRef := strings.Replace(res.Repository, host, shimHost, 1)
+	for _, cap := range []int64{0, 5 * 1024 * 1024 * 1024} {
+		t.Run(fmt.Sprintf("cap-%d", cap), func(t *testing.T) {
+			opts := PullOptions{PlainHTTP: true, MaxBundleBytes: cap}
+			_, err := PullBundle(context.Background(), repoRef, "v1", opts)
+			if err == nil || !strings.Contains(err.Error(), "asset.txt layer has invalid negative size -1 bytes") {
+				t.Fatalf("expected negative asset size error from pull, got %v", err)
+			}
+			_, err = ExtractBundle(context.Background(), repoRef, "v1", t.TempDir(), opts)
+			if err == nil || !strings.Contains(err.Error(), "asset.txt layer has invalid negative size -1 bytes") {
+				t.Fatalf("expected negative asset size error from extract, got %v", err)
+			}
+		})
+	}
+}
+
 // TestFetchLayerBytes_RejectsOversizedBody proves fetchLayerBytes rejects
 // a registry that declares a small layer Size but streams more bytes
 // (chunked, no Content-Length). Without the LimitReader bound the server

@@ -193,7 +193,8 @@ func (s *WorkspaceService) UpdatePublication(ctx context.Context, wsID string, p
 	if err := s.db.Where("id = ?", publication.RegistryID).First(&registry).Error; err == nil && registry.APIToken != "" {
 		apiToken, err := nebicrypto.DecryptField(registry.APIToken, s.encKey)
 		if err == nil {
-			host, _ := oci.ParseRegistryURL(registry.URL)
+			// Quay's visibility API always uses HTTPS.
+			host, _, _ := oci.ParseRegistryURLFull(registry.URL)
 			repoPath := publication.Repository
 			if registry.Namespace != "" {
 				repoPath = registry.Namespace + "/" + publication.Repository
