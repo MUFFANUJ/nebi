@@ -61,43 +61,31 @@ import { buildImportCommand } from '@/lib/registry';
 import { getInstallStatusColor, getProjectStatusColor } from '@/lib/status';
 import { capitalize } from '@/lib/strings';
 import { useAuthStore } from '@/store/authStore';
+import { useModeStore } from '@/store/modeStore';
 import { useProjectNavStore } from '@/store/projectNavStore';
 import type { Collaborator } from '@/types/models';
+
 export const ProjectDetail = () => {
-  const { id } = useParams<{
-    id: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const consumePendingTab = useProjectNavStore((s) => s.consumePendingTab);
   const projectId = id || '';
+
   const { data: project, isLoading: projectLoading } = useProject(projectId);
   const { data: packages, isLoading: packagesLoading } = usePackages(projectId);
   const { data: collaborators } = useCollaborators(projectId);
   const userCollaborators = collaborators?.filter(
-    (
-      c,
-    ): c is Extract<
-      Collaborator,
-      {
-        kind: 'user';
-      }
-    > => c.kind === 'user',
+    (c): c is Extract<Collaborator, { kind: 'user' }> => c.kind === 'user',
   );
   const groupCollaborators = collaborators?.filter(
-    (
-      c,
-    ): c is Extract<
-      Collaborator,
-      {
-        kind: 'group';
-      }
-    > => c.kind === 'group',
+    (c): c is Extract<Collaborator, { kind: 'group' }> => c.kind === 'group',
   );
   const { data: publications, isLoading: publicationsLoading } =
     usePublications(projectId);
   const updatePubMutation = useUpdatePublication();
   const currentUser = useAuthStore((state) => state.user);
+
   const [activeTab, setActiveTab] = useState(
     () => consumePendingTab() || 'overview',
   );
@@ -114,13 +102,16 @@ export const ProjectDetail = () => {
     id: string;
     type: string;
   } | null>(null);
+
   // Determine if this is a local project
   const isLocalProject = project?.source === 'local';
-
+  // Determine if server is in local mode
+  const isLocalMode = useModeStore((s) => s.isLocalMode());
   // User can only share if it's not a local project and they are the owner
   const isOwner = project?.owner_id === currentUser?.id;
   const canWrite = project?.can_write === true;
   const editingToml = isEditingToml && canWrite;
+
   const loadPixiToml = useCallback(async () => {
     setLoadingToml(true);
     try {
@@ -132,12 +123,14 @@ export const ProjectDetail = () => {
       setLoadingToml(false);
     }
   }, [projectId]);
+
   // Load pixi.toml when switching to that tab
   useEffect(() => {
     if (activeTab === 'toml' && !pixiToml) {
       void loadPixiToml();
     }
   }, [activeTab, pixiToml, loadPixiToml]);
+
   const handleCopyImport = async (pub: {
     registry_url: string;
     registry_namespace: string;
@@ -153,6 +146,7 @@ export const ProjectDetail = () => {
     setCopiedImportId(pub.id);
     setTimeout(() => setCopiedImportId(null), 2000);
   };
+
   if (projectLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -160,9 +154,11 @@ export const ProjectDetail = () => {
       </div>
     );
   }
+
   if (!project) {
     return <div>Project not found</div>;
   }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -300,7 +296,7 @@ export const ProjectDetail = () => {
           <TabsTab value="publications">
             Publications ({publications?.length || 0})
           </TabsTab>
-          {!isLocalProject && (
+          {!isLocalProject && !isLocalMode && (
             <TabsTab value="collaborators">
               Collaborators ({collaborators?.length || 0})
             </TabsTab>
@@ -410,19 +406,28 @@ export const ProjectDetail = () => {
                 </span>
               </div>
 
-              {/* Collaborators — links to the collaborators tab */}
+              {/* Collaborators — links to collaborators tab (non-local, non-local-mode projects) */}
               {!isLocalProject && (
                 <div className="grid grid-cols-[220px_1fr] items-center gap-4 py-2.5">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-left"
-                    onClick={() => setActiveTab('collaborators')}
-                  >
-                    <Users className="h-3 w-3 shrink-0" />
-                    <span className="text-sm font-medium underline decoration-dotted underline-offset-2">
-                      Collaborators ({userCollaborators?.length || 0})
-                    </span>
-                  </button>
+                  {!isLocalMode ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-left"
+                      onClick={() => setActiveTab('collaborators')}
+                    >
+                      <Users className="h-3 w-3 shrink-0" />
+                      <span className="text-sm font-medium underline decoration-dotted underline-offset-2">
+                        Collaborators ({userCollaborators?.length || 0})
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Users className="h-3 w-3 shrink-0" />
+                      <span className="text-sm font-medium">
+                        Collaborators ({userCollaborators?.length || 0})
+                      </span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-1.5">
                     {userCollaborators?.slice(0, 3).map((c) => (
                       <UserBadge key={c.user_id} username={c.username} />
@@ -439,16 +444,25 @@ export const ProjectDetail = () => {
               {/* Groups — only shown when the project has any group shares */}
               {!isLocalProject && (groupCollaborators?.length || 0) > 0 && (
                 <div className="grid grid-cols-[220px_1fr] items-center gap-4 py-2.5">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-left"
-                    onClick={() => setActiveTab('collaborators')}
-                  >
-                    <Users2 className="h-3 w-3 shrink-0" />
-                    <span className="text-sm font-medium underline decoration-dotted underline-offset-2">
-                      Groups ({groupCollaborators?.length || 0})
-                    </span>
-                  </button>
+                  {!isLocalMode ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-left"
+                      onClick={() => setActiveTab('collaborators')}
+                    >
+                      <Users2 className="h-3 w-3 shrink-0" />
+                      <span className="text-sm font-medium underline decoration-dotted underline-offset-2">
+                        Groups ({groupCollaborators?.length || 0})
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Users2 className="h-3 w-3 shrink-0" />
+                      <span className="text-sm font-medium">
+                        Groups ({groupCollaborators?.length || 0})
+                      </span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-1.5">
                     {groupCollaborators?.slice(0, 3).map((g) => (
                       <Badge
@@ -868,7 +882,7 @@ export const ProjectDetail = () => {
           )}
         </TabsPanel>
 
-        {!isLocalProject && (
+        {!isLocalProject && !isLocalMode && (
           <TabsPanel value="collaborators" className="px-1">
             <div className="space-y-4 my-4">
               <h2 className="text-2xl font-bold mb-0">Collaborators</h2>

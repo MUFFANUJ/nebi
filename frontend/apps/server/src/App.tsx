@@ -25,15 +25,19 @@ import { Login } from './pages/Login';
 import { ProjectDetail } from './pages/ProjectDetail';
 import { Projects } from './pages/Projects';
 import { Registries, RegistryRepositories } from './pages/Registries';
+import { RemoteProjectDetail } from './pages/RemoteProjectDetail';
+import { Settings } from './pages/Settings';
 import { useAuthStore } from './store/authStore';
-import { useRuntimeConfigStore } from './store/runtimeConfigStore';
+import { useModeStore } from './store/modeStore';
 
-// Load runtime configuration before rendering any routes
-const RuntimeConfigLoader = ({ children }: { children: ReactElement }) => {
-  const { loading, fetchConfig } = useRuntimeConfigStore();
+// Load mode before rendering any routes
+const ModeLoader = ({ children }: { children: ReactElement }) => {
+  const { loading, fetchMode } = useModeStore();
+
   useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
+    fetchMode();
+  }, [fetchMode]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -43,11 +47,17 @@ const RuntimeConfigLoader = ({ children }: { children: ReactElement }) => {
   }
   return children;
 };
+
 const PrivateRoute = ({ children }: { children: ReactElement }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated());
+  const isLocalMode = useModeStore((state) => state.isLocalMode());
+
+  // In local mode, auth is bypassed
+  if (isLocalMode) return children;
 
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
+
 const AdminRoute = () => {
   const { data: isAdmin, isLoading } = useQuery({
     queryKey: ['user', 'is_admin'],
@@ -61,6 +71,7 @@ const AdminRoute = () => {
     },
     retry: false,
   });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -68,17 +79,21 @@ const AdminRoute = () => {
       </div>
     );
   }
+
   if (!isAdmin) {
     return <Navigate to="/projects" replace />;
   }
+
   return <Outlet />;
 };
+
 function App() {
   const { themeMode, isDarkMode, setThemeMode } = useTheme();
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={getBasePath()}>
-        <RuntimeConfigLoader>
+        <ModeLoader>
           <Routes>
             <Route path="/login" element={<Login isDarkMode={isDarkMode} />} />
             <Route
@@ -96,11 +111,16 @@ function App() {
               <Route index element={<Navigate to="/projects" replace />} />
               <Route path="projects" element={<Projects />} />
               <Route path="projects/:id" element={<ProjectDetail />} />
+              <Route
+                path="remote/projects/:id"
+                element={<RemoteProjectDetail />}
+              />
               <Route path="registries" element={<Registries />} />
               <Route
                 path="registries/:registryId"
                 element={<RegistryRepositories />}
               />
+              <Route path="settings" element={<Settings />} />
 
               <Route element={<AdminRoute />}>
                 <Route element={<AdminLayout />}>
@@ -120,9 +140,10 @@ function App() {
               </Route>
             </Route>
           </Routes>
-        </RuntimeConfigLoader>
+        </ModeLoader>
       </BrowserRouter>
     </QueryClientProvider>
   );
 }
+
 export default App;

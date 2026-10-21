@@ -31,8 +31,9 @@ import {
   Search,
   Settings,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { RemoteUnreachableBanner } from '@/components/remote/RemoteUnreachableBanner';
 import { useIsAdmin } from '@/hooks/useAdmin';
 import {
   useImportEnvironment,
@@ -40,6 +41,7 @@ import {
   useRegistryRepositories,
   useRepositoryTags,
 } from '@/hooks/useRegistries';
+import { useRemoteRegistries, useRemoteView } from '@/hooks/useRemote';
 import { buildImportCommand } from '@/lib/registry';
 
 export const Registries = () => {
@@ -48,8 +50,31 @@ export const Registries = () => {
   const { data: registries, isLoading: registriesLoading } =
     usePublicRegistries();
 
-  const displayedRegistries = registries || [];
-  const isLoading = registriesLoading;
+  // View mode support for local desktop app
+  const { viewMode, isRemoteConnected, isRemoteView } = useRemoteView();
+  const {
+    data: remoteRegistries,
+    isFirstLoad: remoteFirstLoad,
+    isUnreachable: remoteIsUnreachable,
+  } = useRemoteRegistries(isRemoteConnected);
+
+  // Show registries based on view mode when connected to remote
+  const displayedRegistries = useMemo(() => {
+    if (!isRemoteConnected) {
+      return registries || [];
+    }
+    // When connected, show based on viewMode
+    if (viewMode === 'local') {
+      return registries || [];
+    } else {
+      return remoteRegistries || [];
+    }
+  }, [registries, remoteRegistries, isRemoteConnected, viewMode]);
+
+  const remoteUnreachable = isRemoteView && remoteIsUnreachable;
+  // Full-page spinner only until the remote list first resolves or errors
+  // (see isFirstLoad in useRemote.ts).
+  const isLoading = registriesLoading || (isRemoteConnected && remoteFirstLoad);
 
   if (isLoading) {
     return (
@@ -78,6 +103,8 @@ export const Registries = () => {
           </Button>
         )}
       </div>
+
+      {remoteUnreachable && <RemoteUnreachableBanner />}
 
       <Table aria-label="Registries">
         <TableHeader>
@@ -116,7 +143,7 @@ export const Registries = () => {
         </TableBody>
       </Table>
 
-      {displayedRegistries.length === 0 && (
+      {displayedRegistries.length === 0 && !remoteUnreachable && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             No registries configured.{' '}

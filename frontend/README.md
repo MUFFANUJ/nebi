@@ -43,11 +43,12 @@ Each app owns its routing, API clients, data hooks, stores, and domain types
 under `src/`. `@nebi/ui` takes props and emits events; it
 must not import either app, fetch application data, or depend on app stores.
 
-App identity is selected by the Go entry point, not a frontend mode check.
-The client bypasses login and uses `networkMode: 'always'` for its loopback API;
-the server authenticates and uses `'online'`. Client remote-view switching is
-still dynamic and independent of this split. `/version` still loads runtime
-features and the gateway logout URL before routing.
+The Go entry point selects the client or server bundle. Both apps retain the
+original `modeStore`, mode-dependent branches, and local/remote workflows.
+`/version` loads runtime mode, features, and the gateway logout URL before
+routing, including the existing desktop fallback when the request fails.
+Local mode bypasses login and uses `networkMode: 'always'` for its loopback API;
+team mode authenticates and uses `'online'`.
 
 `make build-frontend` and the Wails build hook use `npm run build:embed` to
 build both apps and replace the copies in `internal/frontend/dist`.
@@ -156,9 +157,8 @@ Open http://localhost:8461 while the corresponding Vite server is running.
 - **Server:** Sign in at `/login` using an account configured on the team
   backend. When OIDC is configured, use the configured sign-in flow. Successful
   sign-in opens **Projects**. There are no default credentials supplied by the UI.
-  Remote connection settings (`/settings`) and remote project details
-  (`/remote/projects/:id`) are client-only routes and are not registered in the
-  server app.
+  Both apps retain `/settings` and `/remote/projects/:id` routes, although their
+  remote connection workflows require the local backend's `/remote/*` endpoints.
 
 ### Managing Projects
 
@@ -198,6 +198,9 @@ Both apps communicate with their backend through REST APIs:
   Queries and mutations pause while the browser reports offline.
 - **Updates:** Project, package, and job hooks poll for progress. Client remote
   queries use their own retry and polling policies to recover from outages.
+
+Both apps retain the original Axios interceptors: stored JWTs are attached to
+requests, and authentication-error redirects are bypassed in local mode.
 
 ## Styling
 

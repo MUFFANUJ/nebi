@@ -361,6 +361,9 @@ func TestRouterSelectsFrontendApp(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if len(bytes.TrimSpace(index)) == 0 {
+				t.Skip("frontend embed placeholder; run make build-frontend to test bundle selection")
+			}
 			entry := regexp.MustCompile(`<script[^>]+src="([^"]+)"`).FindSubmatch(index)
 			if len(entry) != 2 {
 				t.Fatal("built frontend has no entry script")

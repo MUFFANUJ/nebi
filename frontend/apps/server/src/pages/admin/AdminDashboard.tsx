@@ -15,7 +15,9 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { RemoteUnreachableBanner } from '@/components/remote/RemoteUnreachableBanner';
 import {
   useDashboardStats,
   useFederatedIdentityReviews,
@@ -23,6 +25,13 @@ import {
 } from '@/hooks/useAdmin';
 import { useJobs } from '@/hooks/useJobs';
 import { useProjects } from '@/hooks/useProjects';
+import {
+  useRemoteDashboardStats,
+  useRemoteFederatedIdentityReviews,
+  useRemoteJobs,
+  useRemoteProjects,
+  useRemoteView,
+} from '@/hooks/useRemote';
 import { isPendingFederatedIdentityReview } from '@/types';
 
 const StatCard = ({
@@ -86,10 +95,47 @@ export const AdminDashboard = () => {
   const { data: identityReviews, isLoading: reviewsLoading } =
     useFederatedIdentityReviews();
 
-  const displayedProjects = projects || [];
-  const displayedJobs = jobs || [];
-  const displayedStats = dashboardStats;
-  const displayedIdentityReviews = identityReviews || [];
+  // View mode support
+  const { viewMode, isRemoteConnected, isRemoteView } = useRemoteView();
+
+  // Remote data
+  const remoteProjectsQuery = useRemoteProjects(isRemoteView);
+  const remoteJobsQuery = useRemoteJobs(isRemoteView);
+  const remoteStatsQuery = useRemoteDashboardStats(isRemoteView);
+  const remoteReviewsQuery = useRemoteFederatedIdentityReviews(isRemoteView);
+  const remoteProjects = remoteProjectsQuery.data;
+  const remoteJobs = remoteJobsQuery.data;
+  const remoteDashboardStats = remoteStatsQuery.data;
+  const remoteIdentityReviews = remoteReviewsQuery.data;
+
+  // Select data based on view mode
+  const displayedProjects = useMemo(() => {
+    if (!isRemoteConnected || viewMode === 'local') {
+      return projects || [];
+    }
+    return remoteProjects || [];
+  }, [projects, remoteProjects, isRemoteConnected, viewMode]);
+
+  const displayedJobs = useMemo(() => {
+    if (!isRemoteConnected || viewMode === 'local') {
+      return jobs || [];
+    }
+    return remoteJobs || [];
+  }, [jobs, remoteJobs, isRemoteConnected, viewMode]);
+
+  const displayedStats = useMemo(() => {
+    if (!isRemoteConnected || viewMode === 'local') {
+      return dashboardStats;
+    }
+    return remoteDashboardStats;
+  }, [dashboardStats, remoteDashboardStats, isRemoteConnected, viewMode]);
+
+  const displayedIdentityReviews = useMemo(() => {
+    if (!isRemoteConnected || viewMode === 'local') {
+      return identityReviews || [];
+    }
+    return remoteIdentityReviews || [];
+  }, [identityReviews, remoteIdentityReviews, isRemoteConnected, viewMode]);
 
   const activeJobs = displayedJobs.filter(
     (job) => job.status === 'running' || job.status === 'pending',
@@ -102,12 +148,22 @@ export const AdminDashboard = () => {
     isPendingFederatedIdentityReview,
   ).length;
 
+  const remoteRequiredQueries = [
+    remoteProjectsQuery,
+    remoteJobsQuery,
+    remoteStatsQuery,
+  ];
+  const remoteUnreachable =
+    isRemoteView && remoteRequiredQueries.some((query) => query.isUnreachable);
+  // Full-page spinner only until the remote queries first resolve or error
+  // (see isFirstLoad in useRemote.ts).
   const isLoading =
     usersLoading ||
     projectLoading ||
     jobsLoading ||
     statsLoading ||
-    reviewsLoading;
+    reviewsLoading ||
+    (isRemoteView && remoteRequiredQueries.some((query) => query.isFirstLoad));
 
   if (isLoading) {
     return (
@@ -131,6 +187,8 @@ export const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {remoteUnreachable && <RemoteUnreachableBanner />}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard title="Total Users" value={users?.length || 0} icon={Users} />

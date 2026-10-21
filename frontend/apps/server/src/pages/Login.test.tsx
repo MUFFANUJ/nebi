@@ -1,10 +1,13 @@
 import { screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { useModeStore } from '@/store/modeStore';
 import { renderWithProviders } from '@/test/utils';
 import { Login } from './Login';
 
 describe('Login', () => {
-  beforeEach(() => {});
+  beforeEach(() => {
+    useModeStore.setState({ mode: 'team', logoutUrl: null, loading: false });
+  });
 
   it('shows pending identity-review status from auth redirects', async () => {
     renderWithProviders(<Login isDarkMode={false} />, {

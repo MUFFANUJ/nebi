@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NEBI_JOB_COMPLETED_MESSAGE } from '@/lib/hostBridge';
+import { useModeStore } from '@/store/modeStore';
 import { mockJob, server } from '@/test/handlers';
 import type { Job } from '@/types';
 import { useHostJobNotifications } from './useHostJobNotifications';
@@ -45,7 +46,9 @@ async function refreshJobs(queryClient: QueryClient) {
   });
 }
 
-beforeEach(() => {});
+beforeEach(() => {
+  useModeStore.setState({ mode: 'local', features: {}, loading: false });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

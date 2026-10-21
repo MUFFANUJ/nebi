@@ -8,6 +8,14 @@ import {
 
 test.beforeEach(async ({ page }) => {
   await mockApi(page);
+  await page.route('**/api/v1/version', (route) =>
+    fulfillJson(route, {
+      mode: 'local',
+      features: {},
+      version: '0.0.0-test',
+      commit: 'e2e',
+    }),
+  );
 });
 
 test('client bypasses login and exposes local settings', async ({ page }) => {

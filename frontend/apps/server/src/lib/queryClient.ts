@@ -13,3 +13,16 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export const setQueryNetworkMode = (networkMode: 'always' | 'online') => {
+  queryClient.setDefaultOptions({
+    queries: {
+      ...queryClient.getDefaultOptions().queries,
+      networkMode,
+    },
+    mutations: {
+      ...queryClient.getDefaultOptions().mutations,
+      networkMode,
+    },
+  });
+};

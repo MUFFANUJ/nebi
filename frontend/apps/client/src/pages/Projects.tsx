@@ -49,14 +49,11 @@ type UnifiedProject = {
   source?: 'local' | 'managed';
   path?: string;
   owner_id?: string;
-  owner?: {
-    id: string;
-    username: string;
-    email: string;
-  };
+  owner?: { id: string; username: string; email: string };
   size_formatted?: string;
   install_status?: InstallStatus;
 };
+
 const DEFAULT_PIXI_TOML = `[workspace]
 name = ""
 channels = ["conda-forge"]
@@ -66,11 +63,13 @@ platforms = ["osx-arm64", "linux-64"]
 python = ">=3.11"
 ipykernel = "*"
 `;
+
 // TODO: Robustify. Maybe use a proper TOML parser?
 const getTomlName = (toml: string): string | null => {
   const match = toml.match(/^name\s*=\s*"([^"]*)"/m);
   return match ? match[1] : null;
 };
+
 export const Projects = () => {
   const navigate = useNavigate();
   const setPendingTab = useProjectNavStore((s) => s.setPendingTab);
@@ -79,16 +78,19 @@ export const Projects = () => {
   const deleteMutation = useDeleteProject();
   const createRemoteMutation = useCreateRemoteProject();
   const deleteRemoteMutation = useDeleteRemoteProject();
-  const { viewMode, isRemoteConnected, isRemoteView } = useRemoteView();
+  const { isLocalMode, viewMode, isRemoteConnected, isRemoteView } =
+    useRemoteView();
   const {
     data: remoteProjects,
     isFirstLoad: remoteFirstLoad,
     isUnreachable: remoteIsUnreachable,
   } = useRemoteProjects(isRemoteConnected);
+
   const [showCreate, setShowCreate] = useState(false);
   const [createTarget, setCreateTarget] = useState<'local' | 'server'>('local');
   const [localPath, setLocalPath] = useState('');
   const [pixiToml, setPixiToml] = useState(DEFAULT_PIXI_TOML);
+
   const [confirmDelete, setConfirmDelete] = useState<{
     id: string;
     name: string;
@@ -103,6 +105,7 @@ export const Projects = () => {
   } | null>(null);
   const [copiedPullId, setCopiedPullId] = useState<string | null>(null);
   const localPathId = useId();
+
   // Filter projects based on view mode (when remote connected) or show all local (when not)
   const displayedProjects = useMemo<UnifiedProject[]>(() => {
     // If not connected to remote, always show local projects
@@ -122,6 +125,7 @@ export const Projects = () => {
         install_status: project.install_status,
       }));
     }
+
     // When connected, show based on viewMode
     if (viewMode === 'local') {
       if (!projects) return [];
@@ -150,6 +154,7 @@ export const Projects = () => {
       }));
     }
   }, [projects, remoteProjects, isRemoteConnected, viewMode]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const projectName = getTomlName(pixiToml);
@@ -159,9 +164,11 @@ export const Projects = () => {
       );
       return;
     }
+
     setError('');
     try {
       const tomlContent = pixiToml;
+
       if (createTarget === 'server' && isRemoteConnected) {
         await createRemoteMutation.mutateAsync({
           name: projectName,
@@ -175,34 +182,33 @@ export const Projects = () => {
             ? { path: localPath.trim(), source: 'local' as const }
             : {}),
         });
+
         // Reset form
         setLocalPath('');
         setPixiToml(DEFAULT_PIXI_TOML);
         setShowCreate(false);
+
         setPendingTab('jobs');
         navigate(`/projects/${project.id}`);
         return;
       }
+
       // Reset form
       setLocalPath('');
       setPixiToml(DEFAULT_PIXI_TOML);
       setShowCreate(false);
     } catch (err) {
-      const error = err as {
-        response?: {
-          data?: {
-            error?: string;
-          };
-        };
-      };
+      const error = err as { response?: { data?: { error?: string } } };
       const errorMessage =
         error?.response?.data?.error ||
         'Failed to create project. Please try again.';
       setError(errorMessage);
     }
   };
+
   const handleDelete = async () => {
     if (!confirmDelete) return;
+
     setError('');
     try {
       if (confirmDelete.location === 'remote') {
@@ -212,13 +218,7 @@ export const Projects = () => {
       }
       setConfirmDelete(null);
     } catch (err) {
-      const error = err as {
-        response?: {
-          data?: {
-            error?: string;
-          };
-        };
-      };
+      const error = err as { response?: { data?: { error?: string } } };
       const errorMessage =
         error?.response?.data?.error ||
         'Failed to delete project. Please try again.';
@@ -226,6 +226,7 @@ export const Projects = () => {
       setConfirmDelete(null);
     }
   };
+
   const handleCopyPull = async (
     e: React.MouseEvent,
     projectName: string,
@@ -238,11 +239,14 @@ export const Projects = () => {
     setCopiedPullId(projectId);
     setTimeout(() => setCopiedPullId(null), 2000);
   };
+
   const isCreatePending =
     createMutation.isPending || createRemoteMutation.isPending;
   const isDeletePending =
     deleteMutation.isPending || deleteRemoteMutation.isPending;
+
   const remoteUnreachable = isRemoteView && remoteIsUnreachable;
+
   // Full-page spinner only until the remote list first resolves or errors
   // (see isFirstLoad in useRemote.ts).
   if (isLoading || (isRemoteConnected && remoteFirstLoad)) {
@@ -252,6 +256,7 @@ export const Projects = () => {
       </div>
     );
   }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -351,8 +356,8 @@ export const Projects = () => {
                 projectName={getTomlName(pixiToml) || ''}
               />
 
-              {/* Path field — only for the local target */}
-              {createTarget === 'local' && (
+              {/* Path field — only for local target in local mode */}
+              {createTarget === 'local' && isLocalMode && (
                 <div className="space-y-2">
                   <label htmlFor={localPathId} className="text-sm font-medium">
                     Path (optional)

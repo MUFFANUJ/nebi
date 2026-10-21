@@ -5,6 +5,7 @@ import { Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { projectsApi } from '@/api/projects';
 import { useAuthStore } from '@/store/authStore';
+import { useModeStore } from '@/store/modeStore';
 import { mockJob, mockProject, mockUser, server } from '@/test/handlers';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectDetail } from './ProjectDetail';
@@ -31,6 +32,7 @@ function renderProject(canWrite?: boolean) {
 
 beforeEach(() => {
   useAuthStore.setState({ user: mockUser });
+  useModeStore.setState({ mode: 'team' });
   server.use(
     http.get('/api/v1/projects/ws-1/packages', () => HttpResponse.json([])),
     http.get('/api/v1/projects/ws-1/pixi-toml', () =>
@@ -42,6 +44,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   useAuthStore.setState({ user: null });
+  useModeStore.setState({ mode: null });
 });
 
 describe('Project configuration permissions', () => {

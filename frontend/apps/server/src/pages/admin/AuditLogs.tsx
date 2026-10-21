@@ -17,8 +17,10 @@ import {
   TableRow,
 } from '@nebi/ui/components/ui/table';
 import { Loader2, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { RemoteUnreachableBanner } from '@/components/remote/RemoteUnreachableBanner';
 import { useAuditLogs } from '@/hooks/useAdmin';
+import { useRemoteAuditLogs, useRemoteView } from '@/hooks/useRemote';
 
 const ACTION_COLORS: Record<string, string> = {
   create_user: 'bg-green-100 text-green-800 border-green-300',
@@ -60,11 +62,38 @@ export const AuditLogs = () => {
     action: '',
   });
 
+  // View mode support
+  const { viewMode, isRemoteConnected, isRemoteView } = useRemoteView();
+
   const { data: logs, isLoading: logsLoading } = useAuditLogs(
     filters.user_id || filters.action ? filters : undefined,
   );
-  const displayedLogs = logs || [];
-  const isLoading = logsLoading;
+
+  const {
+    data: remoteLogs,
+    isFirstLoad: remoteFirstLoad,
+    isUnreachable: remoteIsUnreachable,
+  } = useRemoteAuditLogs(
+    isRemoteView,
+    filters.user_id || filters.action ? filters : undefined,
+  );
+
+  // Show logs based on view mode
+  const displayedLogs = useMemo(() => {
+    if (!isRemoteConnected) {
+      return logs || [];
+    }
+    if (viewMode === 'local') {
+      return logs || [];
+    } else {
+      return remoteLogs || [];
+    }
+  }, [logs, remoteLogs, isRemoteConnected, viewMode]);
+
+  const remoteUnreachable = isRemoteView && remoteIsUnreachable;
+  // Full-page spinner only until the remote list first resolves or errors
+  // (see isFirstLoad in useRemote.ts).
+  const isLoading = logsLoading || (isRemoteView && remoteFirstLoad);
 
   if (isLoading) {
     return (
@@ -82,6 +111,8 @@ export const AuditLogs = () => {
           View all system activity and changes
         </p>
       </div>
+
+      {remoteUnreachable && <RemoteUnreachableBanner />}
 
       <div className="flex gap-4">
         <div className="flex-1">
@@ -178,7 +209,7 @@ export const AuditLogs = () => {
         </TableBody>
       </Table>
 
-      {displayedLogs.length === 0 && (
+      {displayedLogs.length === 0 && !remoteUnreachable && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             {filters.user_id || filters.action
