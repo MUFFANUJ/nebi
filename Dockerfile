@@ -13,7 +13,7 @@ RUN npm run build
 # Stage 2: Prepare Go source and generated assets
 # Pinned by exact version + digest; keep in sync with the toolchain directive
 # in go.mod (scripts/check-go-toolchain.sh gates supported lines in CI).
-FROM golang:1.26.7-alpine@sha256:28d89ee9cc0ff9fec75c82ca201e6bf7fdf9a679d4b7b24dfa04f2bb766bb468 AS backend-base
+FROM golang:1.26.10-alpine@sha256:5cb67f19c5e7994dcb80c074f7cfca8aeeada45bbdca035f73df269cefdcce61 AS backend-base
 WORKDIR /app
 
 # Copy go mod files and download dependencies (cached layer)
