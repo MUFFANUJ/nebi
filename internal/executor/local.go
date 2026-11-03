@@ -303,8 +303,8 @@ func (e *LocalExecutor) SolveEnvironment(ctx context.Context, project *models.Pr
 	})
 }
 
-// InstallEnvironment runs `pixi install -v` in the project directory,
-// materializing .pixi/envs/ from the already-resolved pixi.lock.
+// InstallEnvironment runs `pixi install --locked -v` in the project directory,
+// materializing .pixi/envs/ without changing the saved specification.
 func (e *LocalExecutor) InstallEnvironment(ctx context.Context, project *models.Project, logWriter io.Writer) error {
 	envPath := e.GetProjectPath(project)
 	return e.withStorageLimit(ctx, envPath, logWriter, func(ctx context.Context) error {
@@ -316,7 +316,7 @@ func (e *LocalExecutor) InstallEnvironment(ctx context.Context, project *models.
 
 		pixiBinary := pm.BinaryPath()
 		processLimits := e.limits.ProcessLimits()
-		cmd := process.CommandContext(ctx, pixiBinary, []string{"install", "-v"}, processLimits)
+		cmd := process.CommandContext(ctx, pixiBinary, []string{"install", "--locked", "-v"}, processLimits)
 		cmd.Dir = envPath
 		env, err := process.PreparedWorkspaceEnv(envPath)
 		if err != nil {
@@ -326,7 +326,7 @@ func (e *LocalExecutor) InstallEnvironment(ctx context.Context, project *models.
 		limitLogWriter := &processLimitLogWriter{target: logWriter, limits: processLimits}
 		cmd.Stdout = limitLogWriter
 		cmd.Stderr = limitLogWriter
-		fmt.Fprintf(logWriter, "Running: %s install -v\n", pixiBinary)
+		fmt.Fprintf(logWriter, "Running: %s install --locked -v\n", pixiBinary)
 		if err := cmd.Run(); err != nil {
 			installErr := fmt.Errorf("pixi install failed: %w", err)
 			if limitLogWriter.SeenResourceLimitOutput() || process.IsResourceLimitExit(ctx, err, processLimits, "") {

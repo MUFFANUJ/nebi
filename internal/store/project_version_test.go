@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/nebari-dev/nebi/internal/projectfs"
 )
 
 // makeProjectWithDir creates a tracked project pointing at a fresh
@@ -202,5 +204,42 @@ func TestRollbackToVersion_NotFound(t *testing.T) {
 
 	if _, err := s.RollbackToVersion(project.ID, 42); err == nil {
 		t.Fatal("expected error rolling back to nonexistent version")
+	}
+}
+
+func TestRollbackToVersion_ProtectedManagedProject(t *testing.T) {
+	s := testStore(t)
+	project := makeProjectWithDir(t, s, "managed-rollback")
+	project.Source = "managed"
+	if err := s.SaveProject(project); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(project.Path, 0o755) })
+	first := "[workspace]\nname = \"managed-rollback\"\n"
+	second := first + "[dependencies]\nipykernel = \"*\"\n"
+	for _, manifest := range []string{first, second} {
+		if _, _, err := s.CreateVersion(project.ID, manifest, "version: 6\n", "saved"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := projectfs.WithWriteAccess(project.Path, func() error {
+		return os.WriteFile(filepath.Join(project.Path, "pixi.toml"), []byte(second), 0o644)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	version, err := s.RollbackToVersion(project.ID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version.VersionNumber != 3 || version.ManifestContent != first {
+		t.Fatalf("expected a new rollback revision: %+v", version)
+	}
+	original, err := s.GetVersion(project.ID, 2)
+	if err != nil || original.ManifestContent != second {
+		t.Fatalf("saved revision changed: %+v, %v", original, err)
+	}
+	info, err := os.Stat(filepath.Join(project.Path, "pixi.toml"))
+	if err != nil || info.Mode().Perm()&0o222 != 0 {
+		t.Fatalf("rollback must restore spec protection: %v", err)
 	}
 }

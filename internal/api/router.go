@@ -189,6 +189,10 @@ func NewRouter(cfg *config.Config, db *gorm.DB, q *queue.MemoryQueue, exec execu
 
 	// Initialize services and handlers
 	svc := service.New(db, q, exec, localMode, encKey, rbacProvider, limitCfg)
+	if err := svc.ProtectManagedProjects(); err != nil {
+		logger.Error("Failed to protect managed project specifications", "error", err)
+		panic(err)
+	}
 	adminSvc := service.NewAdminService(db, rbacProvider, limitCfg)
 	groupSvc := service.NewGroupService(db, rbacProvider)
 	registrySvc := service.NewRegistryService(db, encKey, localMode, rbacProvider)

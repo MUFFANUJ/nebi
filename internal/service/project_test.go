@@ -79,6 +79,15 @@ func testSetup(t *testing.T, isLocal bool) (*ProjectService, *gorm.DB) {
 	t.Cleanup(func() { q.Close() })
 
 	dir := t.TempDir()
+	t.Cleanup(func() {
+		// Managed project roots are read-only between Nebi operations.
+		_ = filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				return os.Chmod(path, 0o755)
+			}
+			return err
+		})
+	})
 	cfg := &config.Config{
 		Storage: config.StorageConfig{ProjectsDir: dir},
 	}

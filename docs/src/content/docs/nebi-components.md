@@ -47,3 +47,11 @@ Learn more: [Nebi server setup](/server-setup/).
 ## Local web app
 
 `nebi-web` serves the bundled React frontend for a single-user local workflow. It uses local authentication bypass and binds to loopback by default.
+
+## Managed project specifications
+
+Nebi keeps managed project directories, `pixi.toml`, and `pixi.lock` read-only between its own write operations. This prevents external commands such as `pixi add` from changing a managed specification without recording a revision. Existing managed projects receive the same protection when the application starts. User-owned projects registered with `nebi init` remain writable for normal Pixi workflows.
+
+Integrations that add packages to managed projects must use `POST /api/v1/projects/{id}/packages` with a body such as `{"packages": ["ipykernel"]}` and wait for the returned job to complete. The job creates a new revision and preserves the previous one. Environment installation uses the existing lockfile and rejects stale specifications; solve the project to record dependency changes first.
+
+Filesystem permissions prevent accidental writes by external tools. They do not isolate the project from an administrator or its owner deliberately changing permissions. Applications such as Launchpad must use the versioned API for repair actions instead of invoking `pixi add` directly.

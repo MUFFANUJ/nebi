@@ -194,7 +194,9 @@ func (w *Worker) cleanupFailedJobArtifacts(job *models.Job, jobErr error, logWri
 	if errors.As(jobErr, &reinstallErr) {
 		cleanupJobType = models.JobTypeEnvInstall
 	}
-	if err := w.executor.CleanupJobArtifacts(cleanupCtx, project, cleanupJobType, logWriter); err != nil {
+	if err := w.svc.WithProjectWriteAccess(project, func() error {
+		return w.executor.CleanupJobArtifacts(cleanupCtx, project, cleanupJobType, logWriter)
+	}); err != nil {
 		w.logger.Error("Job cleanup failed", "job_id", job.ID, "project_id", project.ID, "error", err)
 		fmt.Fprintf(logWriter, "Job cleanup failed: %v\n", err)
 	}
@@ -365,7 +367,12 @@ func (w *Worker) executeJob(ctx context.Context, job *models.Job, logWriter io.W
 	if err != nil {
 		return err
 	}
+	return w.svc.WithProjectWriteAccess(project, func() error {
+		return w.executeProjectJob(ctx, job, project, logWriter)
+	})
+}
 
+func (w *Worker) executeProjectJob(ctx context.Context, job *models.Job, project *models.Project, logWriter io.Writer) error {
 	// Prefer the job row's user ID; fall back to legacy metadata for older jobs.
 	userID := project.OwnerID
 	if job.UserID != uuid.Nil {
@@ -572,14 +579,7 @@ func (w *Worker) createVersionSnapshot(ctx context.Context, project *models.Proj
 	}
 	w.logger.Error("Failed to create version snapshot", "project_id", project.ID, "job_id", jobID, "error", err)
 
-	var validationErr *service.ValidationError
-	if errors.As(err, &validationErr) {
-		return err
-	}
-	if isFatalResourceFailure(ctx, err) {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (w *Worker) syncPackagesFromProject(ctx context.Context, project *models.Project, logMessage string) error {

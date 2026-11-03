@@ -20,6 +20,7 @@ import (
 	"github.com/nebari-dev/nebi/internal/cliclient"
 	"github.com/nebari-dev/nebi/internal/config"
 	"github.com/nebari-dev/nebi/internal/oci"
+	"github.com/nebari-dev/nebi/internal/projectfs"
 	"github.com/nebari-dev/nebi/internal/server"
 )
 
@@ -61,6 +62,14 @@ func startLocalModeServer(t *testing.T) *localModeEnv {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "bundle-api-e2e.db")
 	projectDir := t.TempDir()
+	t.Cleanup(func() {
+		_ = filepath.WalkDir(projectDir, func(path string, entry os.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				return os.Chmod(path, 0o755)
+			}
+			return err
+		})
+	})
 
 	port, err := findFreePort()
 	if err != nil {
@@ -212,14 +221,19 @@ func TestE2E_BundlePublishViaAPI_LocalMode(t *testing.T) {
 	projectID := createProjectViaAPI(t, env.serverURL, env.token, "publish-test", pixiTomlBody)
 	pollProjectReady(t, env.serverURL, env.token, projectID, 30*time.Second)
 
-	// Drop a real lockfile + asset on disk where the server expects them
-	// (the worker only wrote pixi.toml; we add the rest by hand to
-	// simulate what the user would have done via push or the editor).
+	// Record the test lockfile through the versioned API, then seed the
+	// publishing fixture's asset through managed filesystem write access.
 	projectPath := filepath.Join(env.projectDir, fmt.Sprintf("publish-test-%s", projectID))
-	if err := os.WriteFile(filepath.Join(projectPath, "pixi.lock"), []byte(pixiLockBody), 0o644); err != nil {
-		t.Fatalf("seed pixi.lock: %v", err)
+	client := cliclient.New(env.serverURL, env.token)
+	if _, err := client.PushVersion(env.ctx, projectID, cliclient.PushRequest{
+		PixiToml: pixiTomlBody,
+		PixiLock: pixiLockBody,
+	}); err != nil {
+		t.Fatalf("push pixi.lock: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(projectPath, "notebook.ipynb"), []byte(notebookBody), 0o644); err != nil {
+	if err := projectfs.WithWriteAccess(projectPath, func() error {
+		return os.WriteFile(filepath.Join(projectPath, "notebook.ipynb"), []byte(notebookBody), 0o644)
+	}); err != nil {
 		t.Fatalf("seed notebook: %v", err)
 	}
 

@@ -272,11 +272,13 @@ func (s *ProjectService) SavePixiToml(projectID string, content string) error {
 		return err
 	}
 
-	projectPath := s.executor.GetProjectPath(&project)
-	if err := os.WriteFile(filepath.Join(projectPath, "pixi.toml"), []byte(content), 0644); err != nil {
-		return fmt.Errorf("write pixi.toml: %w", err)
-	}
-	return nil
+	return s.WithProjectWriteAccess(&project, func() error {
+		projectPath := s.executor.GetProjectPath(&project)
+		if err := os.WriteFile(filepath.Join(projectPath, "pixi.toml"), []byte(content), 0644); err != nil {
+			return fmt.Errorf("write pixi.toml: %w", err)
+		}
+		return nil
+	})
 }
 
 // contentHash computes a deterministic hash of manifest + lock content.
@@ -312,6 +314,16 @@ func (s *ProjectService) PushVersion(ctx context.Context, projectID string, req 
 		}
 		return nil, err
 	}
+	var result *PushResult
+	err := s.WithProjectWriteAccess(&project, func() error {
+		var err error
+		result, err = s.pushVersion(&project, req, userID)
+		return err
+	})
+	return result, err
+}
+
+func (s *ProjectService) pushVersion(project *models.Project, req PushRequest, userID uuid.UUID) (*PushResult, error) {
 	if err := s.validatePushRequest(req); err != nil {
 		return nil, err
 	}
@@ -346,7 +358,7 @@ func (s *ProjectService) PushVersion(ctx context.Context, projectID string, req 
 		versionNumber = existingHashTag.VersionNumber
 	} else {
 		// New content — write files and create version
-		projectPath := s.executor.GetProjectPath(&project)
+		projectPath := s.executor.GetProjectPath(project)
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			return nil, fmt.Errorf("create project directory: %w", err)
 		}

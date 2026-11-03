@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nebari-dev/nebi/internal/contenthash"
+	"github.com/nebari-dev/nebi/internal/projectfs"
 	"gorm.io/gorm"
 )
 
@@ -112,21 +113,30 @@ func (s *Store) RollbackToVersion(projectID uuid.UUID, versionNumber int) (*Loca
 		return nil, fmt.Errorf("project has no path on disk")
 	}
 
-	manifestPath := filepath.Join(project.Path, "pixi.toml")
-	if err := os.WriteFile(manifestPath, []byte(target.ManifestContent), 0644); err != nil {
-		return nil, fmt.Errorf("writing pixi.toml: %w", err)
-	}
-	if target.LockFileContent != "" {
-		lockPath := filepath.Join(project.Path, "pixi.lock")
-		if err := os.WriteFile(lockPath, []byte(target.LockFileContent), 0644); err != nil {
-			return nil, fmt.Errorf("writing pixi.lock: %w", err)
+	var version *LocalProjectVersion
+	restore := func() error {
+		manifestPath := filepath.Join(project.Path, "pixi.toml")
+		if err := os.WriteFile(manifestPath, []byte(target.ManifestContent), 0644); err != nil {
+			return fmt.Errorf("writing pixi.toml: %w", err)
 		}
-	}
+		if target.LockFileContent != "" {
+			lockPath := filepath.Join(project.Path, "pixi.lock")
+			if err := os.WriteFile(lockPath, []byte(target.LockFileContent), 0644); err != nil {
+				return fmt.Errorf("writing pixi.lock: %w", err)
+			}
+		}
 
-	description := fmt.Sprintf("Rolled back to snapshot %d", versionNumber)
-	v, _, err := s.CreateVersion(projectID, target.ManifestContent, target.LockFileContent, description)
-	if err != nil {
-		return nil, fmt.Errorf("snapshotting rollback: %w", err)
+		description := fmt.Sprintf("Rolled back to snapshot %d", versionNumber)
+		version, _, err = s.CreateVersion(projectID, target.ManifestContent, target.LockFileContent, description)
+		if err != nil {
+			return fmt.Errorf("snapshotting rollback: %w", err)
+		}
+		return nil
 	}
-	return v, nil
+	if project.Source == "local" {
+		err = restore()
+	} else {
+		err = projectfs.WithWriteAccess(project.Path, restore)
+	}
+	return version, err
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -569,6 +570,52 @@ func TestLocalExecutor_InstallEnvironment_RunsPixiInstall(t *testing.T) {
 	calls := readStubCalls(t, argsLog)
 	if !containsCall(calls, "install") {
 		t.Errorf("expected a `pixi install` invocation, got calls: %v", calls)
+	}
+	for _, call := range calls {
+		if strings.HasPrefix(call, "install ") && !strings.Contains(call, "--locked") {
+			t.Errorf("environment install must not rewrite the lockfile: %s", call)
+		}
+	}
+}
+
+func TestInstallEnvironmentRejectsUnversionedSpecChanges(t *testing.T) {
+	pixiPath, err := exec.LookPath("pixi")
+	if err != nil {
+		t.Skip("pixi is not installed")
+	}
+	executor := testExecutor(t)
+	executor.config.PixiPath = pixiPath
+	project := &models.Project{ID: uuid.New(), Name: "locked-install"}
+	dir := executor.GetProjectPath(project)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "[workspace]\nname = \"locked-install\"\nchannels = []\nplatforms = []\n"
+	manifestPath := filepath.Join(dir, "pixi.toml")
+	if err := os.WriteFile(manifestPath, []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(pixiPath, "lock", "--manifest-path", manifestPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("create initial lockfile: %v: %s", err, out)
+	}
+	lockPath := filepath.Join(dir, "pixi.lock")
+	lock, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A changed manifest must go through solve + snapshot, rather than
+	// silently producing an unversioned lockfile during environment install.
+	if err := os.WriteFile(manifestPath, []byte(manifest+"[dependencies]\nipykernel = \"*\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var log bytes.Buffer
+	if err := executor.InstallEnvironment(context.Background(), project, &log); err == nil {
+		t.Fatalf("expected stale specification to be rejected: %s", log.String())
+	}
+	got, err := os.ReadFile(lockPath)
+	if err != nil || !bytes.Equal(got, lock) {
+		t.Fatalf("install changed the lockfile: %q, %v", got, err)
 	}
 }
 

@@ -225,6 +225,9 @@ func TestExecuteJob_UpdateSetsProjectReady(t *testing.T) {
 	}
 
 	w := New(queue.NewMemoryQueue(10), exec, svc, jobSvc, slog.Default(), limits.Defaults(), 1)
+	if err := exec.CreateProject(context.Background(), project, &bytes.Buffer{}, executor.CreateProjectOptions{}); err != nil {
+		t.Fatalf("create project files: %v", err)
+	}
 
 	if err := w.executeJob(context.Background(), job, &bytes.Buffer{}); err != nil {
 		t.Fatalf("executeJob: %v", err)
@@ -1087,6 +1090,14 @@ func setupWorkerTestModeWithLimits(t *testing.T, isLocal bool, limitOpts ...limi
 	}
 
 	fe := &fakeExecutor{rootDir: t.TempDir()}
+	t.Cleanup(func() {
+		_ = filepath.WalkDir(fe.rootDir, func(path string, entry os.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				return os.Chmod(path, 0o755)
+			}
+			return err
+		})
+	})
 
 	q := queue.NewMemoryQueue(10)
 	t.Cleanup(func() { q.Close() })
